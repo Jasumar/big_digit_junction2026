@@ -26,6 +26,7 @@ export function createClient({ baseUrl = "", timeoutMs = 30000 } = {}) {
   }
 
   return {
+    health: () => request("/api/health"),
     customers: (limit = 12) => request("/api/customers?limit=" + limit).then((b) => b.customers),
     overview: (customerId) => request("/api/overview?customer_id=" + encodeURIComponent(customerId)),
     // Command -> Answer. `history` is optional: [{role: "user"|"coach", text}]

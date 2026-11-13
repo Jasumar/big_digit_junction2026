@@ -15,6 +15,8 @@ body { margin: 0; font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-ser
 .logo { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%;
   background: var(--green); font-weight: 800; }
 select { max-width: 150px; padding: 6px 8px; border-radius: 8px; border: 0; font: inherit; }
+.banner { background: #fff4e5; color: #7a4100; border-bottom: 1px solid #f3c58b;
+  padding: 8px 14px; font-size: 14px; text-align: center; }
 main { max-width: 640px; margin: 0 auto; padding: 14px 14px 170px; }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px;
   margin-bottom: 12px; }

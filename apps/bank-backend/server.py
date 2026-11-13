@@ -3,8 +3,10 @@
 
     python3 apps/bank-backend/server.py            # http://localhost:8000
 
-Env: PORT (8000), AI_PROVIDER (stub), SPANKKI_DB (packages/cloud/data/s_pankki.sqlite).
-If the database is missing it is built from the small committed fixture.
+Env: PORT (8000), AI_PROVIDER (stub), SPANKKI_DB (packages/cloud/data/s_pankki.sqlite),
+REQUIRE_FULL_DATA (set to 1 to refuse to start on the sample).
+If the database is missing it is built from the small committed fixture, with a loud
+warning; /api/health and the UI also say which data is loaded.
 """
 import json
 import mimetypes
@@ -29,12 +31,31 @@ STATIC = {"": os.path.join(ROOT, "apps", "frontend"),
 MAX_BODY = 20000
 
 
-def open_store():
+class SampleDataError(RuntimeError):
+    pass
+
+
+def open_store(require_full=None):
+    if require_full is None:
+        require_full = os.environ.get("REQUIRE_FULL_DATA", "") not in ("", "0")
     path = os.environ.get("SPANKKI_DB") or DEFAULT_DB
     if not os.path.exists(path):
-        print("no database at %s; building the small fixture" % path)
+        if require_full:
+            raise SampleDataError("no database at %s and REQUIRE_FULL_DATA is set; run "
+                                  "packages/cloud/seed.py --csv-dir <dir>" % path)
+        print("no database at %s; building the small fixture" % path, flush=True)
         seed.build(seed.FIXTURE_DIR, path)
-    return Store(path)
+    store = Store(path)
+    info = store.info()
+    if info["source"] == "fixture":
+        if require_full:
+            raise SampleDataError("%s holds the %d-customer sample, not the full data; "
+                                  "REQUIRE_FULL_DATA is set" % (path, info["customers"]))
+        bar = "!" * 72
+        print("%s\n  WARNING: running on the SAMPLE data (%d customers), not the full "
+              "dataset.\n  For the demo: python3 packages/cloud/seed.py --csv-dir <dir>\n%s"
+              % (bar, info["customers"], bar), file=sys.stderr, flush=True)
+    return store
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -58,7 +79,8 @@ class Handler(BaseHTTPRequestHandler):
         q = parse_qs(url.query)
         try:
             if url.path == "/api/health":
-                return self._json(200, {"ok": True, "provider": self.provider.name})
+                return self._json(200, {"ok": True, "provider": self.provider.name,
+                                        "data": self.store.info()})
             if url.path == "/api/customers":
                 limit = min(int(q.get("limit", ["12"])[0]), 100)
                 return self._json(200, {"customers": self.store.list_customers(limit)})
@@ -110,12 +132,16 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    Handler.store = open_store()
+    try:
+        Handler.store = open_store()
+    except SampleDataError as e:
+        sys.exit("refusing to start: %s" % e)
     Handler.provider = get_provider()
     port = int(os.environ.get("PORT", "8000"))
     srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
-    print("S-pankki coach on http://localhost:%d  (AI provider: %s, db: %s)"
-          % (port, Handler.provider.name, Handler.store.path))
+    info = Handler.store.info()
+    print("S-pankki coach on http://localhost:%d  (AI provider: %s, data: %s, %d customers,"
+          " %s)" % (port, Handler.provider.name, info["source"], info["customers"], info["path"]), flush=True)
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

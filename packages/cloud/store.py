@@ -37,6 +37,15 @@ class Store:
                      (customer_id,))
         return r["d"] if r else None
 
+    def info(self):
+        """Which data is loaded. `source` is 'fixture' (6-customer sample) or 'full'."""
+        meta = {r["key"]: r["value"] for r in self.rows("SELECT key, value FROM meta")}
+        customers = self.one("SELECT COUNT(*) AS n FROM customers")["n"]
+        source = meta.get("source") or ("fixture" if customers <= 10 else "full")
+        return {"path": self.path, "source": source, "customers": customers,
+                "transactions": int(meta.get("rows", 0)),
+                "data_from": meta.get("data_min"), "data_to": meta.get("data_max")}
+
     def peer(self, age_band, key):
         return self.one("SELECT avg_monthly, median_monthly, n FROM peer_benchmark"
                         " WHERE age_band = ? AND key = ?", (age_band, key))

@@ -145,13 +145,33 @@ class TestFlow(Base):
         with self.assertRaises(orchestrator.BadCommand):
             orchestrator.handle_command({"text": "hi"}, self.store, self.provider)
 
+    def test_sample_data_guard(self):
+        old = os.environ.get("SPANKKI_DB")
+        os.environ["SPANKKI_DB"] = self.store.path  # a fixture database
+        try:
+            with self.assertRaises(server.SampleDataError):
+                server.open_store(require_full=True)
+            self.assertEqual(server.open_store(require_full=False).info()["source"], "fixture")
+            os.environ["SPANKKI_DB"] = os.path.join(self.tmp.name, "missing.sqlite")
+            with self.assertRaises(server.SampleDataError):
+                server.open_store(require_full=True)
+            self.assertFalse(os.path.exists(os.environ["SPANKKI_DB"]))
+        finally:
+            if old is None:
+                os.environ.pop("SPANKKI_DB", None)
+            else:
+                os.environ["SPANKKI_DB"] = old
+
     def test_http(self):
         server.Handler.store, server.Handler.provider = self.store, self.provider
         srv = server.ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
         threading.Thread(target=srv.serve_forever, daemon=True).start()
         base = "http://127.0.0.1:%d" % srv.server_address[1]
         try:
-            self.assertTrue(json.load(urllib.request.urlopen(base + "/api/health"))["ok"])
+            h = json.load(urllib.request.urlopen(base + "/api/health"))
+            self.assertTrue(h["ok"])
+            self.assertEqual(h["data"]["source"], "fixture")
+            self.assertEqual(h["data"]["customers"], 6)
             self.assertIn(b"Money Coach", urllib.request.urlopen(base + "/").read())
             self.assertIn(b"createClient", urllib.request.urlopen(base + "/client/client.js").read())
             req = urllib.request.Request(base + "/api/command", method="POST", data=json.dumps(

@@ -164,6 +164,15 @@ async function init() {
   }
   $("ask").onsubmit = (e) => { e.preventDefault(); ask($("q").value); };
   try {
+    const h = await api.health();
+    if (h.data && h.data.source === "fixture") {
+      const b = $("banner");
+      b.textContent = "Sample data only (" + h.data.customers +
+        " customers). Load the full dataset before the demo.";
+      b.hidden = false;
+    }
+  } catch (_) {}
+  try {
     const customers = await api.customers(12);
     const sel = $("customer");
     for (const c of customers) sel.append(new Option(c.customer_id + " (" + c.age + ")", c.customer_id));

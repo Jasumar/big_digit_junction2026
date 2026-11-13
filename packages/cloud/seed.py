@@ -104,8 +104,9 @@ def build(csv_dir, db_path):
     db.execute("CREATE INDEX idx_tx_customer_date ON transactions (customer_id, tx_date)")
 
     mn, mx = db.execute("SELECT MIN(tx_date), MAX(tx_date) FROM transactions").fetchone()
+    source = "fixture" if os.path.realpath(csv_dir) == os.path.realpath(FIXTURE_DIR) else "full"
     db.executemany("INSERT INTO meta VALUES (?,?)",
-                   [("data_min", mn), ("data_max", mx), ("rows", str(n))])
+                   [("data_min", mn), ("data_max", mx), ("rows", str(n)), ("source", source)])
 
     build_peer_benchmark(db, ages)
     db.commit()

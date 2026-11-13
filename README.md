@@ -44,7 +44,10 @@ dataset (5,100 customers, 3.6M transactions) get the CSVs from
 python3 packages/cloud/seed.py --csv-dir <folder with the CSVs>   # ~80 s, 500 MB, gitignored
 ```
 
-Env: `PORT`, `AI_PROVIDER` (only `stub` so far), `SPANKKI_DB` — see `.env.example`.
+Env: `PORT`, `AI_PROVIDER` (only `stub` so far), `SPANKKI_DB`, `REQUIRE_FULL_DATA` — see
+`.env.example`. On the sample data the server prints a warning and the UI shows a
+banner; for the demo start it with `REQUIRE_FULL_DATA=1` so it refuses to run without the
+full dataset. `GET /api/health` reports which data is loaded.
 
 ## Start
 
