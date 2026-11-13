@@ -29,6 +29,7 @@ own transactions plus the peer benchmark table.
 | `safe_to_spend` | what can I safely spend over N days |
 | `savings_opportunities` | how could I save more: gaps to peers, top merchants, tips |
 | `peer_comparison` | monthly spend per category vs age-band median |
+| `simulate_change` | what if I cut/raise a category or basket by X%: monthly, yearly, horizon, savings rate |
 | `explore_transactions` | free exploration: filter, group, aggregate |
 
 Add a tool: write the function, add it to `CATALOG`, add a visual in

@@ -18,8 +18,14 @@ CATEGORY_WORDS = {
     "Utilities": ("utilit", "electricity", "internet", "phone bill"),
     "Housing": ("housing", "rent", "mortgage"),
 }
+BUCKET_WORDS = {
+    "everyday": ("everyday", "extras", "small purchases", "slips through"),
+    "necessities": ("necessit", "unexpected", "surprise", "irregular"),
+    "essentials": ("essential", "fixed cost", "regular bills"),
+}
 HELP = ("I can show where your money went, what kind of spender you are, what you can "
-        "safely spend this week, how you compare with others, and where you could save. "
+        "safely spend this week, how you compare with others, where you could save, and "
+        "what-ifs like 'what if I cut restaurants by 20%?'. "
         "Try one of those, or ask about a category like restaurants or groceries.")
 
 
@@ -42,6 +48,37 @@ def _period(text):
     return None
 
 
+def _what_if(text):
+    """'reduced dining out by 20%' -> simulate_change args, or None if not a what-if."""
+    t = text.lower()
+    m = re.search(r"(\d+(?:\.\d+)?)\s*(%|percent|per cent)", t)
+    change_words = re.search(r"reduc|cut|less|lower|stop|quit|half|more|increase|raise|"
+                             r"drop|skip", t)
+    if not (m or re.search(r"what if|if i\b", t)) or not change_words:
+        return None
+    if m:
+        pct = float(m.group(1))
+    elif "half" in t:
+        pct = 50.0
+    elif re.search(r"stop|quit|no more|skip", t):
+        pct = 100.0
+    else:
+        pct = 20.0
+    up = re.search(r"more|increase|raise", t) and not re.search(r"reduc|cut|less|lower", t)
+    args = {"change_pct": pct if up else -min(pct, 100.0)}
+    cat = _category(text)
+    if cat:
+        args["category"] = cat
+    else:
+        args["bucket"] = next((b for b, ws in BUCKET_WORDS.items()
+                               if any(w in t for w in ws)), "everyday")
+    h = re.search(r"(\d+)\s*(month|year)", t)
+    if h:
+        n = int(h.group(1)) * (12 if h.group(2) == "year" else 1)
+        args["months_ahead"] = max(1, min(n, 60))
+    return args
+
+
 def _category(text):
     t = " " + text.lower() + " "
     for cat, words in CATEGORY_WORDS.items():
@@ -60,7 +97,10 @@ class Provider:
         p = {"period": period} if period else {}
         cat = _category(text)
 
-        if re.search(r"safe|afford|can i spend|how much (can|could) i|budget for", t):
+        what_if = _what_if(text)
+        if what_if:
+            return {"requests": [{"tool": "simulate_change", "args": what_if}]}
+        if re.search(r"safe|afford|can i spend|how much (can|could) i (spend|afford)|budget for", t):
             days = 30 if "month" in t else 1 if ("today" in t or "tonight" in t) else 7
             return {"requests": [{"tool": "safe_to_spend", "args": {"horizon_days": days}}]}
         if re.search(r"kind of spender|type of spender|spender|my habits|profile|personality", t):
@@ -216,6 +256,38 @@ class Provider:
         if d["peer_median_monthly_spend"]:
             text += " That is %s %s the median." % (eur(abs(diff)),
                                                     "below" if diff <= 0 else "above")
+        return text, ins
+
+    def _simulate_change(self, d):
+        tgt = d["target"].get("category") or d["target"]["label"].lower()
+        verb = "cut" if d["change_pct"] < 0 else "increase"
+        saving = d["monthly_saving"]
+        text = ("If you %s %s by %.0f%%, you'd spend %s a month instead of %s" % (
+            verb, tgt, abs(d["change_pct"]), eur(d["new_monthly"]), eur(d["baseline_monthly"])))
+        if saving >= 0:
+            text += " — that frees up %s a month, %s a year" % (eur(saving),
+                                                              eur(d["yearly_saving"]))
+            if d["months_ahead"] != 12:
+                text += ", %s over %d months" % (eur(d["saving_over_horizon"]),
+                                                d["months_ahead"])
+        else:
+            text += " — %s more a month, %s a year" % (eur(-saving), eur(-d["yearly_saving"]))
+        text += "."
+        ins = []
+        if d["purchases_change_per_month"]:
+            ins.append({"title": "In everyday terms", "kind": "tip",
+                        "body": "About %.0f %s purchases a month (you make %.0f now)." % (
+                            abs(d["purchases_change_per_month"]),
+                            "fewer" if d["purchases_change_per_month"] < 0 else "more",
+                            d["purchases_per_month"])})
+        if d["savings_rate_pct_now"] is not None:
+            better = d["savings_rate_pct_after"] >= d["savings_rate_pct_now"]
+            ins.append({"title": "Savings rate", "kind": "good" if better else "warn",
+                        "body": "You'd keep %.0f%% of your income instead of %.0f%%." % (
+                            d["savings_rate_pct_after"], d["savings_rate_pct_now"])})
+        ins.append({"title": "How this is worked out", "kind": "info",
+                    "body": "Based on your average for %s to %s. %s" % (
+                        d["from"], d["to"], d["note"])})
         return text, ins
 
     def _explore_transactions(self, d):

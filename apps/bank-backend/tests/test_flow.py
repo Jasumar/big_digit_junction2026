@@ -62,6 +62,9 @@ class TestApproval(unittest.TestCase):
         self.assertFalse(ok("spending_breakdown", {"period": "forever"}))
         self.assertFalse(ok("spending_breakdown", {"customer_id": "CUST00002"}))
         self.assertFalse(ok("safe_to_spend", {"horizon_days": 400}))
+        self.assertFalse(ok("simulate_change", {"category": "Restaurants"}))
+        self.assertFalse(ok("simulate_change", {"change_pct": -500, "bucket": "everyday"}))
+        self.assertTrue(ok("simulate_change", {"change_pct": -20, "bucket": "everyday"}))
         self.assertFalse(ok("explore_transactions", {"group_by": "customer_id"}))
         self.assertFalse(approval.check({"tool": "spender_profile", "args": {}}, "")[0])
 
@@ -86,7 +89,20 @@ class TestTools(Base):
     def test_every_tool_runs_for_every_customer(self):
         for cid in [c["customer_id"] for c in self.store.list_customers(10)]:
             for t in tools.CATALOG:
-                tools.run(t["name"], self.store, cid, {})
+                args = {"change_pct": -20, "bucket": "everyday"} \
+                    if t["name"] == "simulate_change" else {}
+                tools.run(t["name"], self.store, cid, args)
+
+
+    def test_simulation_math(self):
+        d = tools.run("simulate_change", self.store, CID,
+                      {"category": "Restaurants", "change_pct": -20, "months_ahead": 6})
+        self.assertAlmostEqual(d["new_monthly"], d["baseline_monthly"] * 0.8, 1)
+        self.assertAlmostEqual(d["monthly_saving"], d["baseline_monthly"] * 0.2, 1)
+        self.assertAlmostEqual(d["saving_over_horizon"], d["monthly_saving"] * 6, 0)
+        self.assertGreaterEqual(d["savings_rate_pct_after"], d["savings_rate_pct_now"])
+        with self.assertRaises(ValueError):
+            tools.run("simulate_change", self.store, CID, {"change_pct": -20})
 
 
 class TestFlow(Base):
@@ -94,7 +110,9 @@ class TestFlow(Base):
         for q, tool in (("Where did my money go?", "spending_breakdown"),
                         ("What kind of spender am I?", "spender_profile"),
                         ("What can I safely spend this week?", "safe_to_spend"),
-                        ("How could I save more?", "savings_opportunities")):
+                        ("How could I save more?", "savings_opportunities"),
+                        ("How much could I save if I reduced dining out by 20%?",
+                         "simulate_change")):
             a = self.ask(q)
             self.assertEqual(validate(ANSWER, a), [], q)
             self.assertEqual([t["tool"] for t in a["trace"]], [tool], q)

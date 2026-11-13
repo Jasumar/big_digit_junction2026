@@ -96,6 +96,24 @@ def _peer_comparison(d):
              "display": eur(c["peer_median"] or 0), "tone": "peer"})]}]
 
 
+def _simulate_change(d):
+    tgt = d["target"].get("category") or d["target"]["label"]
+    saving = d["monthly_saving"]
+    items = [{"label": "Per month" if saving >= 0 else "Extra per month",
+              "value": eur(abs(saving)), "tone": "good" if saving >= 0 else "warn"},
+             {"label": "Per year", "value": eur(abs(d["yearly_saving"]))}]
+    if d["months_ahead"] != 12:
+        items.append({"label": "In %d months" % d["months_ahead"],
+                      "value": eur(abs(d["saving_over_horizon"]))})
+    return [{"type": "stats", "items": items},
+            {"type": "bars", "title": "%s per month: now vs %+.0f%%" % (tgt, d["change_pct"]),
+             "items": [{"label": "Now", "value": d["baseline_monthly"],
+                        "display": eur(d["baseline_monthly"]), "tone": "peer"},
+                       {"label": "After", "value": d["new_monthly"],
+                        "display": eur(d["new_monthly"]),
+                        "tone": "good" if saving >= 0 else "warn"}]}]
+
+
 def _explore_transactions(d):
     if not d["groups"]:
         return [{"type": "stats", "items": [{"label": "Nothing found", "value": "€0"}]}]

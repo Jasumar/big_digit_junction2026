@@ -31,7 +31,7 @@ Each directory has a README with its intent, setup and conventions.
 ## Run
 
 ```bash
-bash scripts/test.sh                       # 13 tests, fixture data, no install
+bash scripts/test.sh                       # tests on fixture data, no install
 python3 apps/bank-backend/server.py        # http://localhost:8000 (mobile-first UI)
 ```
 
@@ -55,7 +55,7 @@ cp preferences.example.md preferences.md  # optional, for your agent
 bash scripts/check.sh                     # repo checks
 ```
 
-Read: `docs/CONTRIBUTING.md` for the workflow, `docs/MASTER_PLAN.md` for what we are
+Read: `docs/CHALLENGE.md` for the brief and judging criteria, `docs/CONTRIBUTING.md` for the workflow, `docs/MASTER_PLAN.md` for what we are
 building, `docs/SYSTEM_MAP.md` for who owns what. Agents: `AGENTS.md` first.
 
 ## Conventions

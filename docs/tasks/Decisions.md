@@ -25,6 +25,9 @@ by raising it; the "Where" column says what to touch.
 | 18 | **Shared files edited** (the task owner was you): `.gitignore` (data dir), `.env.example`, `scripts/test.sh` (new), `.github/workflows/ci.yml` (test job), root `README.md`, `docs/SYSTEM_MAP.md`, `docs/MASTER_PLAN.md`, all module READMEs. | Needed to ship a runnable MVP. | listed |
 | 19 | Task files T001–T007 marked done in one pass; their per-task allowed-file lists were not followed since one author built everything. | Single session. | `docs/tasks/` |
 
+| 20 | **What-if = linear scaling** of the category's (or basket's) average monthly spend over the chosen period (default last 90 days); no interest, inflation or behaviour change elsewhere. Change limited to −100%…+200%, horizon 1–60 months. Exactly one of category or basket. | Simple and explainable; the answer states the assumption. | `tools.simulate_change` |
+| 21 | Stub routes "taxis" to all of **Transportation** (no MCC filter yet), and a what-if with no target defaults to the **everyday** basket. | Keep the stub small. | `ai/stub_provider.py` |
+
 ## Known limits
 
 - Stub understands keywords only; free-form questions outside its patterns get the help text.

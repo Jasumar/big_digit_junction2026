@@ -451,6 +451,48 @@ def explore_transactions(store, customer_id, args):
     }
 
 
+def simulate_change(store, customer_id, args):
+    """What if spending in a category (or bucket) changed by change_pct?"""
+    period = args.get("period", "last_90_days")
+    pct = float(args["change_pct"])
+    months_ahead = int(args.get("months_ahead", 12))
+    category, bucket = args.get("category"), args.get("bucket")
+    if bool(category) == bool(bucket):
+        raise ValueError("give exactly one of category or bucket")
+    c = _ctx(store, customer_id, period)
+    months = c["days"] / DAYS_PER_MONTH
+    cur = _spend_by_category(store, customer_id, c["start"], c["end"])
+    cats = [category] if category else [k for k, v in CATEGORY_BUCKET.items() if v == bucket]
+    amt = sum(cur.get(k, {"amt": 0.0})["amt"] for k in cats)
+    n = sum(cur.get(k, {"n": 0})["n"] for k in cats)
+    total = sum(r["amt"] for r in cur.values())
+    income = _income(store, customer_id, c["start"], c["end"])
+
+    base = amt / months
+    new = base * (1 + pct / 100.0)
+    delta = new - base  # negative = money saved
+    spend_m, income_m = total / months, income / months
+
+    def rate(spend):
+        return _r(100 * (income_m - spend) / income_m, 1) if income_m else None
+
+    return {
+        **_period_info(c, period),
+        "target": {"category": category} if category else
+                  {"bucket": bucket, "label": BUCKET_LABELS[bucket], "categories": cats},
+        "change_pct": _r(pct, 1), "months_ahead": months_ahead,
+        "baseline_monthly": _r(base), "new_monthly": _r(new),
+        "monthly_saving": _r(-delta), "saving_over_horizon": _r(-delta * months_ahead),
+        "yearly_saving": _r(-delta * 12),
+        "purchases_per_month": _r(n / months, 1),
+        "purchases_change_per_month": _r(n / months * pct / 100.0, 1),
+        "share_of_spending_pct": _pct(amt, total),
+        "savings_rate_pct_now": rate(spend_m),
+        "savings_rate_pct_after": rate(spend_m + delta),
+        "note": "Assumes everything else stays as in the period; no interest or inflation.",
+    }
+
+
 # ---------------------------------------------------------------- catalog
 
 _PERIOD = {"type": "string", "enum": PERIODS}
@@ -483,6 +525,17 @@ CATALOG = [
      "description": "Monthly spending per category versus the median of customers of the "
                     "same age band.",
      "parameters": _params(period=_PERIOD)},
+    {"name": "simulate_change", "fn": simulate_change,
+     "description": "What-if: how much would be saved (or spent) per month, per year and "
+                    "over N months if spending in one category or bucket changed by "
+                    "change_pct (e.g. -20 = reduce by 20%), and how the savings rate moves. "
+                    "Baseline is the average of the chosen period.",
+     "parameters": {**_params(
+         category={"type": "string", "enum": list(SPEND_CATEGORIES)},
+         bucket={"type": "string", "enum": list(BUCKET_LABELS)},
+         change_pct={"type": "number", "minimum": -100, "maximum": 200},
+         months_ahead={"type": "integer", "minimum": 1, "maximum": 60},
+         period=_PERIOD), "required": ["change_pct"]}},
     {"name": "explore_transactions", "fn": explore_transactions,
      "description": "Free-form exploration of the customer's own transactions: filter by "
                     "category, bucket, merchant, amount, weekday/weekend and time of day, "

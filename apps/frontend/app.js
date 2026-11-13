@@ -6,7 +6,7 @@ const eur = (x) => "€" + Math.round(x).toLocaleString("en-FI");
 const TONE = { essentials: "var(--essentials)", necessities: "var(--necessities)",
   everyday: "var(--everyday)", peer: "var(--peer)", good: "var(--good)", warn: "var(--warn)" };
 const SUGGESTIONS = ["Where did my money go this month?", "What kind of spender am I?",
-  "What can I safely spend this week?", "How could I save more?", "How do I compare to others?",
+  "What can I safely spend this week?", "How could I save more?", "What if I cut dining out by 20%?", "How do I compare to others?",
   "Show my restaurant spending by month"];
 
 let customerId = null;
