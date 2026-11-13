@@ -97,4 +97,5 @@ As of the first MVP (`docs/tasks/Decisions.md`):
 | Safe to save | **missing** |
 | Plain-language explanations of concepts | **missing** beyond answer text; depends on the real AI provider |
 | Real conversational AI | **missing** — rule-based stub until a provider is wired in |
+| Finnish / Swedish | **missing** — UI, charts and stub are English-only; plan in `apps/ai/README.md` §Language |
 | Multi-bank view (bonus) | not started |

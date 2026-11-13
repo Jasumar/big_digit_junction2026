@@ -63,7 +63,10 @@ the MVP on branch `task/t000-first-mvp` and await review.
 2. Safe-to-save tool.
 3. MCC filter in `explore_transactions` (taxis, pharmacies…).
 4. Open-data benchmarks from Statistics Finland.
-5. Agree the demo story below, then polish for it (M3).
+5. Finnish/Swedish/English: string files for fixed text, category-name table, locale
+   number/date formatting, glossary in the AI prompt (`apps/ai/README.md` §Language).
+6. Agree the demo story below, then polish for it (M3). Idea: ask the same question in
+   Finnish and in English and get native answers in both.
 
 ## Open questions
 
@@ -72,12 +75,13 @@ the MVP on branch `task/t000-first-mvp` and await review.
 | 1 | ~~Exact challenge brief and judging criteria?~~ Answered: `CHALLENGE.md` | — | done |
 | 2 | ~~Stack and transport per app?~~ Answered by the MVP: Python stdlib backend, plain JS UI, HTTP between them, in-process AI and calculation (`tasks/Decisions.md` #1–4) | — | done |
 | 3 | ~~Is `apps/client/` a real layer?~~ Answered: a thin JS module, not a process (#3) | — | done |
-| 4 | Which real model and runtime, and does "local" mean self-hosted or an API? | `TODO` | next |
+| 4 | Which AI API provider and model for the challenge? (Answered in part: an API for the challenge; S-Bank may self-host in production.) | `TODO` | next |
 | 5 | ~~What is "cloud" for the demo?~~ Answered: the data platform holding all client data (e.g. BigQuery, Azure, AWS); here, the S-pankki mock data. Local SQLite stands in. | — | done |
 | 6 | ~~Who asks for a calculation, and what does "approved" check?~~ Answered: the model asks; the backend checks the catalog, the schema and that no customer id is supplied (#13) | — | done |
 | 7 | ~~Which calculations does the demo need?~~ Answered for the MVP: seven tools (`apps/bank-backend/calculation/README.md`) | — | done |
 | 8 | Where does the demo run (which laptop), and what is shown live vs scripted? | `TODO` | before demo |
 | 9 | ~~Host the cloud for the demo?~~ Answered: keep the local SQLite stand-in for now | — | done |
+| 11 | Finnish (and Swedish) names for the three baskets and key terms — confirm the draft glossary in `apps/ai/README.md` §Language | `TODO` — a Finnish speaker | before demo |
 | 10 | Which cloud does S-Bank use? Decides the provider if we host later (`packages/cloud/README.md` §Hosting later) | `TODO` — ask S-Bank IT/AI mentor | — |
 
 ## Decision log
@@ -91,21 +95,22 @@ Append-only. One line per decision others must not silently reverse.
 | 2026-11-13 | MVP built with stdlib Python, plain JS, SQLite, stub AI; smaller choices in `docs/tasks/Decisions.md` (#1–22) | ship something that runs | MVP build |
 | 2026-11-13 | "Cloud" = the data platform that holds all client data (GCP BigQuery, Azure, AWS or similar). In this project it holds the S-pankki mock data. | team definition | team |
 | 2026-11-13 | Keep the local SQLite stand-in for the cloud for now; hosted platform later | demo works offline, no accounts | team |
+| 2026-11-14 | Challenge uses a hosted AI API; S-Bank may self-host in production, so the provider stays behind `apps/ai/provider.py` | speed for the challenge, swappable later | team |
+| 2026-11-14 | One model answers in the user's language (Finnish/Swedish/English); no translation model; fixed UI text via string files, numbers formatted by code | simpler, faster, keeps tone; numbers stay exact | team |
 | 2026-11-13 | The AI model never reads client data; it only sees results of backend-approved calculations | privacy, the core of the pitch | team |
 
 ## Risks
 
-- A local model is too slow or too weak on our hardware → fallback: a smaller model,
-  or canned answers behind the same contract for the demo.
+- A self-hosted model (S-Bank production) is weaker in Finnish → test Finnish quality
+  first; consider a Finnish-trained open model before adding a translation step.
 - The model emits malformed calculation requests → the backend rejects them (step 3)
   and the answer says so; never crash the demo.
 - No real S-pankki data → mock data in `packages/cloud/` from day one.
 - Demo laptop lacks the full database and silently runs on the 6-customer sample →
   start with `REQUIRE_FULL_DATA=1`; the UI also shows a banner on sample data.
-
 - A real AI provider adds seconds per answer and can be down → keep `AI_PROVIDER=stub`
   as the offline fallback; the database is not the bottleneck (<5 ms per tool).
-- The stub only understands keywords → script the demo questions, or wire the real
-  provider first.
+- The stub only understands English keywords; Finnish questions get the help text →
+  wire the real provider before showing Finnish.
 
 Add risks as they appear, each with its fallback.

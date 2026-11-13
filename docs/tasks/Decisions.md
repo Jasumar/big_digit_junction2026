@@ -31,9 +31,14 @@ by raising it; the "Where" column says what to touch.
 
 | 23 | **Raw data is downloaded, not committed:** `fetch_data.py` pulls all four CSVs from the official repo into gitignored `data/raw/`; the committed fixture stays small (6 customers + their mortgage). No Git LFS in this repo. | The transactions file (363 MB) exceeds GitHub's 100 MB limit; LFS would add tooling. | `packages/cloud/` |
 
+| 24 | **Language: one model answers in the user's language** (Finnish, Swedish, English); no separate translation model. Fixed UI/chart text via string files; money and dates formatted by code; basket glossary in the prompt. Not built yet. | Agreed by the team (2026-11-14); reasons in `apps/ai/README.md` §Language. | `apps/ai/`, `apps/frontend/`, `present.py` |
+
 ## Known limits
 
-- Stub understands keywords only; free-form questions outside its patterns get the help text.
+- Stub understands English keywords only; Finnish questions and anything outside its
+  patterns get the help text.
+- UI, chart labels and category names are English only; money is formatted the English
+  way (`€1,234`).
 - Merchants are synthetic ids (`MRC-RES-0018`), so "top merchants" show ids, not names.
 - Safe-to-spend assumes steady habits; no one-off events, no multiple accounts (data has one per customer).
 - No streaming, no persistence of chat history, no automated tests for the browser UI
