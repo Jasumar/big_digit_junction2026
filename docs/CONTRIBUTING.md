@@ -5,19 +5,19 @@ Rules for everyone, humans and agents. Short on purpose.
 ## One task, one branch, one worktree
 
 ```bash
-cp docs/tasks/TEMPLATE.md docs/tasks/T007-upload-endpoint.md   # fill it in first
-git worktree add .worktrees/task-t007-upload-endpoint -b task/t007-upload-endpoint main
-cd .worktrees/task-t007-upload-endpoint
-git commit -m "T007: add upload endpoint"
+cp docs/tasks/TEMPLATE.md docs/tasks/T042-upload-endpoint.md   # fill it in first
+git worktree add .worktrees/task-t042-upload-endpoint -b task/t042-upload-endpoint main
+cd .worktrees/task-t042-upload-endpoint
+git commit -m "T042: add upload endpoint"
 
 # before merging: rebase, check, merge
 git rebase main            # or: git fetch origin && git rebase origin/main
 bash scripts/check.sh
-cd ../.. && git checkout main && git merge --no-ff task/t007-upload-endpoint
+cd ../.. && git checkout main && git merge --no-ff task/t042-upload-endpoint
 
 # after merging
-git worktree remove .worktrees/task-t007-upload-endpoint
-git branch -d task/t007-upload-endpoint
+git worktree remove .worktrees/task-t042-upload-endpoint
+git branch -d task/t042-upload-endpoint
 ```
 
 Worktrees share one `.git`, so two branches can be checked out at once — no stashing,
@@ -78,7 +78,7 @@ rotating the key first, not deleting the line.
 
 ## Commits
 
-`T007: add upload endpoint` — task id, one line, why in the body when it is not obvious.
+`T042: add upload endpoint` — task id, one line, why in the body when it is not obvious.
 No mixed unrelated changes, no generated files.
 
 ## Agents

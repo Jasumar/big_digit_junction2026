@@ -4,8 +4,8 @@ One file per unit of work: the contract between the person doing it, everyone wo
 next to them, and any agent.
 
 ```bash
-cp docs/tasks/TEMPLATE.md docs/tasks/T007-upload-endpoint.md   # fill in, then
-git worktree add .worktrees/task-t007-upload-endpoint -b task/t007-upload-endpoint main
+cp docs/tasks/TEMPLATE.md docs/tasks/T042-upload-endpoint.md   # fill in, then
+git worktree add .worktrees/task-t042-upload-endpoint -b task/t042-upload-endpoint main
 ```
 
 Rules:
