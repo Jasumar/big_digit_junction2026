@@ -68,8 +68,8 @@ required; the challenge is fully solvable with the provided and open data.
 
 ## Data
 
-Four CSVs (data dictionary in the organiser's brief PDF; how we load them in
-`packages/cloud/README.md`):
+Four CSVs (data dictionary in the organiser's brief PDF; how we load them, and what
+profiling found, in `packages/cloud/README.md`):
 
 | File | Contents |
 | --- | --- |

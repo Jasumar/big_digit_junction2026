@@ -7,8 +7,9 @@ gitignored) may add personal preferences; these rules and `docs/` outrank it.
 
 Your task file if you have one, then `docs/CHALLENGE.md` (what we are judged on),
 `docs/MASTER_PLAN.md`, `docs/SYSTEM_MAP.md`, and
-the README of the directory you are touching. Nothing here describes a chosen stack —
-if a document contradicts your plan, the document wins; say so instead of choosing.
+the README of the directory you are touching. The stack is chosen
+(`docs/tasks/Decisions.md`) — if a document contradicts your plan, the document wins;
+say so instead of choosing.
 
 ## 2. Stay in bounds
 

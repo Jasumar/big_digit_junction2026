@@ -9,7 +9,7 @@ by raising it; the "Where" column says what to touch.
 | 2 | **Frontend: plain HTML/CSS/JS ES modules**, no framework, no build. Mobile-first single page. | Nothing to install or break on the day. | `apps/frontend/` |
 | 3 | **`apps/client/` is a thin JS module** (`client.js`: fetch, timeout, error messages) loaded by the frontend, not a separate process. | Open question 3; a process would add nothing for the demo. | `apps/client/client.js` |
 | 4 | **Transport:** frontend → backend over HTTP/JSON; backend → AI and → calculation are **in-process calls**. One server serves the API and the static UI. | Fewest moving parts; the AI edge is still two function calls (`plan`, `compose`). | `apps/bank-backend/server.py` |
-| 5 | **Cloud = SQLite built from the hackathon CSVs** by `packages/cloud/seed.py`. Full DB (500 MB) is gitignored; a 6-customer fixture (300 KB) is committed so a fresh clone and CI work. | Open question 5. Server auto-builds the fixture DB if none exists. | `packages/cloud/`, `.gitignore` |
+| 5 | **Cloud stand-in = local SQLite built from the hackathon CSVs** (the team defines cloud as the client-data platform, e.g. BigQuery; team chose to keep it local for now, question 9) by `packages/cloud/seed.py`. Full DB (500 MB) is gitignored; a 6-customer fixture (300 KB) is committed so a fresh clone and CI work. | Open question 5. Server auto-builds the fixture DB if none exists. | `packages/cloud/`, `.gitignore` |
 | 6 | **Mortgage CSVs are not used.** The brief's coach is about transactions. | Scope. | — |
 | 7 | **Three buckets by category.** Essentials: Housing, Utilities, Groceries, Transportation. Necessities: Health, Home & Tech. Everyday: Restaurants, Entertainment, Lifestyle, Travel. Salary/other income is income; Salary Sweep and Invest Deposit/Withdraw are transfers (neither spend nor income). | The data has no "unexpected" flag; this is the simplest honest mapping. | `packages/cloud/taxonomy.py` |
 | 8 | **"Today" = the customer's latest transaction date** (data ends 2026-09-30). | Demo must not depend on the wall clock. | `store.as_of` |
@@ -27,10 +27,14 @@ by raising it; the "Where" column says what to touch.
 
 | 20 | **What-if = linear scaling** of the category's (or basket's) average monthly spend over the chosen period (default last 90 days); no interest, inflation or behaviour change elsewhere. Change limited to −100%…+200%, horizon 1–60 months. Exactly one of category or basket. | Simple and explainable; the answer states the assumption. | `tools.simulate_change` |
 | 21 | Stub routes "taxis" to all of **Transportation** (no MCC filter yet), and a what-if with no target defaults to the **everyday** basket. | Keep the stub small. | `ai/stub_provider.py` |
+| 22 | **Sample-data guard:** seed records `source` (fixture/full) in `meta`; older DBs are classed by customer count (≤10 = fixture). Sample → startup warning, `/api/health.data`, UI banner. `REQUIRE_FULL_DATA=1` makes the server refuse to start instead of falling back. | A fresh laptop silently demoing 6 customers was the main demo-day data risk. | `server.py`, `store.info`, `app.js` |
 
 ## Known limits
 
 - Stub understands keywords only; free-form questions outside its patterns get the help text.
 - Merchants are synthetic ids (`MRC-RES-0018`), so "top merchants" show ids, not names.
 - Safe-to-spend assumes steady habits; no one-off events, no multiple accounts (data has one per customer).
-- No streaming, no persistence of chat history, no tests for the browser UI (checked by hand once).
+- No streaming, no persistence of chat history, no automated tests for the browser UI
+  (checked by hand in the browser pane after each feature).
+- Profiling notes, measured tool latency and cloud-hosting notes:
+  `packages/cloud/README.md`.
