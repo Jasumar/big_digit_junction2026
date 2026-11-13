@@ -37,12 +37,16 @@ python3 apps/bank-backend/server.py        # http://localhost:8000 (mobile-first
 
 No dependencies: Python 3.10+ standard library, plain JS in the browser. With no
 database present the server builds a small fixture (6 customers). For the full
-dataset (5,100 customers, 3.6M transactions) get the CSVs from
-`hackjunction/Junction-2026-S-pankki` (the large one is Git LFS) and run:
+dataset (all four CSVs: 5,100 customers, 3.6M transactions, 200 mortgage
+applications) download it from `hackjunction/Junction-2026-S-pankki` and build:
 
 ```bash
-python3 packages/cloud/seed.py --csv-dir <folder with the CSVs>   # ~80 s, 500 MB, gitignored
+python3 packages/cloud/fetch_data.py   # ~364 MB into packages/cloud/data/raw/, gitignored
+python3 packages/cloud/seed.py --full  # ~70 s, ~500 MB database, gitignored
 ```
+
+The raw data is too big for git (GitHub's limit is 100 MB per file), so every clone
+fetches it once with the commands above.
 
 Env: `PORT`, `AI_PROVIDER` (only `stub` so far), `SPANKKI_DB`, `REQUIRE_FULL_DATA` — see
 `.env.example`. On the sample data the server prints a warning and the UI shows a

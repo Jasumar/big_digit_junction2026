@@ -86,6 +86,15 @@ class TestTools(Base):
             d = tools.run("safe_to_spend", self.store, cid, {"horizon_days": 7})
             self.assertGreaterEqual(d["safe_to_spend"], 0)
 
+    def test_all_four_files_loaded(self):
+        info = self.store.info()
+        self.assertEqual((info["customers"], info["mortgage_applications"]), (6, 1))
+        self.assertGreater(info["mortgage_events"], 0)
+        app = self.store.one("SELECT * FROM mortgage_applications WHERE customer_id = ?",
+                             ("CUST00006",))
+        self.assertEqual(app["final_decision"], "rejected")
+        self.assertAlmostEqual(app["final_loan_to_value"], 0.93, 2)
+
     def test_every_tool_runs_for_every_customer(self):
         for cid in [c["customer_id"] for c in self.store.list_customers(10)]:
             for t in tools.CATALOG:

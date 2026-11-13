@@ -20,7 +20,7 @@ Proposed from the brief (`CHALLENGE.md`); confirm as a team.
   approval step. *Built, except the real AI provider.*
 - **Should have:** safe to save; open-data benchmarks (Statistics Finland); MCC-level
   questions ("taxis last month"); plain-language explanations of financial concepts.
-- **Out of scope:** mortgage data, real login, multi-bank (PSD2) view, hosted cloud,
+- **Out of scope:** mortgage features (the data is loaded, no tool uses it), real login, multi-bank (PSD2) view, hosted cloud,
   native app.
 
 ## Demo

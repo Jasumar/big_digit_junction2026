@@ -42,7 +42,7 @@ def open_store(require_full=None):
     if not os.path.exists(path):
         if require_full:
             raise SampleDataError("no database at %s and REQUIRE_FULL_DATA is set; run "
-                                  "packages/cloud/seed.py --csv-dir <dir>" % path)
+                                  "packages/cloud/fetch_data.py, then seed.py --full" % path)
         print("no database at %s; building the small fixture" % path, flush=True)
         seed.build(seed.FIXTURE_DIR, path)
     store = Store(path)
@@ -53,7 +53,7 @@ def open_store(require_full=None):
                                   "REQUIRE_FULL_DATA is set" % (path, info["customers"]))
         bar = "!" * 72
         print("%s\n  WARNING: running on the SAMPLE data (%d customers), not the full "
-              "dataset.\n  For the demo: python3 packages/cloud/seed.py --csv-dir <dir>\n%s"
+              "dataset.\n  For the demo: python3 packages/cloud/fetch_data.py && python3 packages/cloud/seed.py --full\n%s"
               % (bar, info["customers"], bar), file=sys.stderr, flush=True)
     return store
 

@@ -78,6 +78,9 @@ profiling found, in `packages/cloud/README.md`):
 | `mtg_negotiation_history.csv` | mortgage application event history |
 | `mtg_tx_customer_link_and_final_mtg_infio.csv` | links mortgage customers to transaction customers, final outcome |
 
+All four are fetched by `python3 packages/cloud/fetch_data.py` and loaded by
+`python3 packages/cloud/seed.py --full`.
+
 ## Where the MVP stands against the brief
 
 As of the first MVP (`docs/tasks/Decisions.md`):

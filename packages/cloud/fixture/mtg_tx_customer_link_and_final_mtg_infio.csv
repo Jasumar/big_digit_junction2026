@@ -1,0 +1,2 @@
+mortgage_customer_id,customer_id,final_decision,rejection_reason,final_property_price_eur,final_requested_loan_eur,final_equity_amount_eur,final_collateral_value_eur,required_monthly_income_eur,lfinal_loan_to_value
+C0630,CUST00006,rejected,insufficient_equity,188000,175000,13000,129000,3221.50700742757,0.93085106382978

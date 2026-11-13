@@ -28,12 +28,28 @@ store (or mock) from nothing.
 ## Setup
 
 ```bash
-python3 packages/cloud/seed.py                    # committed 6-customer fixture
-python3 packages/cloud/seed.py --csv-dir <dir>    # full dataset, ~80 s, ~500 MB
+python3 packages/cloud/fetch_data.py              # all four CSVs -> data/raw/ (~364 MB)
+python3 packages/cloud/seed.py --full             # full database, ~70 s, ~500 MB
+python3 packages/cloud/seed.py                    # committed 6-customer fixture only
+python3 packages/cloud/seed.py --csv-dir <dir>    # the four CSVs from another folder
 ```
-Output `packages/cloud/data/s_pankki.sqlite` (gitignored). `taxonomy.py` defines which
-categories are spending and the three buckets; `store.py` is the read-only access
-(open with `mode=ro`); tables: `customers`, `transactions`, `peer_benchmark`, `meta`.
+Output `packages/cloud/data/s_pankki.sqlite`; `data/` (raw CSVs and database) is
+gitignored. Seeding builds into a temporary file and swaps it in, so a failed run keeps
+the old database. `taxonomy.py` defines which categories are spending and the three
+buckets; `store.py` is the read-only access (open with `mode=ro`).
+
+Tables: `customers`, `transactions`, `peer_benchmark`, `meta`, `mortgage_applications`
+(one row per application, linked to `customer_id`), `mortgage_events` (application
+event history). The upstream column `lfinal_loan_to_value` is stored as
+`final_loan_to_value`.
+
+**Two data sets:**
+
+- **`fixture/`** (committed, 360 KB): the first six customers, CUST00001–06, with all
+  their transactions and the one mortgage application among them (CUST00006). It is
+  deliberately small so tests, CI and a fresh clone work without the download. That is
+  why `fixture/tx_customers_junction.csv` has six rows.
+- **`data/raw/`** (downloaded, not committed): the complete four files.
 
 The server checks which data is loaded (`meta.source`: `fixture` or `full`), warns on
 the sample, and refuses to start on it with `REQUIRE_FULL_DATA=1` (Decisions #22).
@@ -43,6 +59,9 @@ the sample, and refuses to start on it with `REQUIRE_FULL_DATA=1` (Decisions #22
 What we learned from profiling the S-pankki CSVs (source:
 `hackjunction/Junction-2026-S-pankki`; the transactions file is ~363 MB via Git LFS).
 
+- **Download:** `fetch_data.py` uses GitHub's raw URLs (which resolve the Git LFS
+  file). Python from python.org on macOS may lack CA certificates; the script then
+  falls back to `curl`, still verifying TLS.
 - **Size:** 3,626,755 transactions, 5,100 customers, 2024-10-01 – 2026-09-30.
   **One bank account per customer.** Ages 18–90, most 30–59.
 - **Files start with a UTF-8 BOM** — read with `utf-8-sig`.
@@ -58,7 +77,9 @@ What we learned from profiling the S-pankki CSVs (source:
 - **Recurring patterns:** salary and housing roughly
   monthly, utilities several small payments a month — `safe_to_spend` predicts the next
   date from the median gap.
-- **Mortgage files** (`mtg_*.csv`) are not loaded (Decisions #6).
+- **Mortgage files:** 200 applications (150 approved, 50 rejected; main rejection
+  reason insufficient collateral) with 3,452 events, April–May 2026. Each links to a
+  transaction customer. Loaded into the database; no tool uses them yet (Decisions #6).
 
 ## Performance
 

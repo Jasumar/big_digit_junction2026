@@ -44,7 +44,9 @@ class Store:
         source = meta.get("source") or ("fixture" if customers <= 10 else "full")
         return {"path": self.path, "source": source, "customers": customers,
                 "transactions": int(meta.get("rows", 0)),
-                "data_from": meta.get("data_min"), "data_to": meta.get("data_max")}
+                "data_from": meta.get("data_min"), "data_to": meta.get("data_max"),
+                "mortgage_applications": int(meta.get("mortgage_applications", 0)),
+                "mortgage_events": int(meta.get("mortgage_events", 0))}
 
     def peer(self, age_band, key):
         return self.one("SELECT avg_monthly, median_monthly, n FROM peer_benchmark"
