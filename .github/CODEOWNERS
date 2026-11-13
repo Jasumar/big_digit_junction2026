@@ -1,0 +1,18 @@
+# CODEOWNERS — template. GitHub only uses this file once the lines are uncommented
+# and the handles below are replaced with real GitHub users or teams.
+#
+# Uncomment, replace `@org/team` with your team, and commit. Then a PR touching an
+# area automatically requests review from its owner, which is what keeps module
+# boundaries honest when everyone is working at once.
+#
+# Format: <path pattern> <owner> <owner> ...
+# Later lines win over earlier ones.
+
+# *                 @org/team
+
+# apps/frontend/     @org/frontend
+# apps/backend/      @org/backend
+# packages/contracts/ @org/backend @org/frontend
+# packages/db/       @org/backend
+# docs/              @org/team
+# .github/           @org/team

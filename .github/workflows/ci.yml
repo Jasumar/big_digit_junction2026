@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Stack checks (lint, type check, test, build) get added here once the stack is
+# chosen. Until then CI runs only the repo hygiene checks, so the workflow is real
+# and green from day one instead of a placeholder that never executes.
+
+jobs:
+  hygiene:
+    name: Repo hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Repo checks
+        run: bash scripts/check.sh
+
+  # --- template for the real checks ---------------------------------------------
+  # Copy this job when the stack is decided, keep the commands identical to the
+  # ones documented in README.md §Commands, and delete whatever does not apply.
+  #
+  # checks:
+  #   name: Lint, type check, test, build
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-node@v4        # or setup-python@v5, or both
+  #       with:
+  #         node-version-file: .nvmrc
+  #     - run: <install command>
+  #     - run: <lint command>
+  #     - run: <type check command>
+  #     - run: <test command>
+  #     - run: <build command>
