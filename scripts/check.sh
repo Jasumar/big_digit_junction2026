@@ -19,7 +19,7 @@ echo "Repository checks"
 echo "structure"
 for p in \
   README.md AGENTS.md .gitignore .env.example preferences.example.md \
-  docs/MASTER_PLAN.md docs/SYSTEM_MAP.md docs/CONTRIBUTING.md \
+  docs/CHALLENGE.md docs/MASTER_PLAN.md docs/SYSTEM_MAP.md docs/CONTRIBUTING.md \
   docs/tasks/TEMPLATE.md docs/tasks/README.md \
   apps/frontend/README.md apps/client/README.md \
   apps/bank-backend/README.md apps/bank-backend/calculation/README.md \

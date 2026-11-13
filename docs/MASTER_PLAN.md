@@ -6,11 +6,9 @@ not.
 
 ## Challenge
 
-Organiser: S-pankki. `TODO`: challenge name, one-paragraph problem, link to the brief.
-
-Working idea: a client asks a question or gives a command in the app; a locally hosted
-AI model answers with insights, backed by calculations the bank backend approves and
-runs over the client's own data. The model never reads client data directly.
+S-Bank: build a mobile-first AI financial coach that lets people chat with their own
+money, built around the three spending baskets. Full brief, judging criteria and a
+gap list against the MVP: [`CHALLENGE.md`](CHALLENGE.md).
 
 ## MVP scope
 
@@ -55,7 +53,7 @@ parallel — one person each. T007 joins them into M1.
 
 | # | Question | Owner | Due |
 | --- | --- | --- | --- |
-| 1 | Exact challenge brief and judging criteria? | `TODO` | day 1 |
+| 1 | ~~Exact challenge brief and judging criteria?~~ Answered: `CHALLENGE.md` | — | done |
 | 2 | Stack and transport per app, and who owns setup? (T001) | `TODO` | day 1 |
 | 3 | Is `apps/client/` a real layer, or the data layer inside the frontend? | `TODO` | day 1 |
 | 4 | Which model and runtime counts as "local", and what hardware runs it? (T005) | `TODO` | day 1 |
