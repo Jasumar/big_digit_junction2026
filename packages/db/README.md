@@ -1,35 +1,20 @@
 # packages/db
 
-Schema, migrations, and seed data. **Status: not scaffolded** — stack not chosen yet.
+State that outlives a process. **Not scaffolded** — it is not yet decided whether we
+store anything locally, remotely, or at all; the directory may end up thin or unused.
+Fold it into another module rather than forcing a database in.
 
-Owner: `TODO` (see `docs/SYSTEM_MAP.md` §Module ownership)
+Owner: `TODO` (`docs/SYSTEM_MAP.md`)
 
-## Responsibility
-
-- Own the schema and every migration.
-- Provide a client/interface the backend uses; keep connection setup in one place.
-- Provide seed data so a fresh checkout has something to demo.
+- Depends on: nothing in this repo.
+- Owns: the shape of stored data, how it is accessed, and seeds for a fresh start.
+- Not its job: business logic, or shapes the contract does not describe.
 
 ## Rules
 
-1. **One migration per change.** Never edit a migration that is already on `main`.
-2. **Announce schema changes** in the task file and the channel — another task may be
-   reading or writing the same tables.
-3. **Clean checkout must work.** One documented command creates and seeds a database
-   from nothing; run it yourself before merging.
-4. **Destructive changes** (dropping columns, rewriting data) need a second pair of
-   eyes even at hackathon speed.
-
-## Depends on
-
-Nothing in this repo. Apps depend on this, never the reverse.
+Shared surface: no silent changes. One change at a time, say so in the task file and to
+the team, and leave one documented command that gets a working store from nothing.
 
 ## Setup
 
-`TODO`: create / migrate / seed / reset commands — added when the stack is chosen, and
-mirrored in the root `README.md` §Commands.
-
-## Conventions
-
-`TODO`: naming, how to add a table, where seeds live, how local data is reset.
-Local database files are gitignored (`*.db`, `*.sqlite`, `data/`).
+`TODO`: create / seed / reset, once it is decided what "the store" is.

@@ -1,42 +1,19 @@
-# --- secrets and local config -----------------------------------------------
+# local config and secrets
 .env
 .env.*
 !.env.example
 preferences.md
 
-# --- worktrees ---------------------------------------------------------------
-# One directory per task branch; never committed.
+# per-task checkouts
 .worktrees/
 
-# --- dependencies and build output ------------------------------------------
+# dependencies and build output
 node_modules/
+.venv/
 dist/
 build/
-out/
-.next/
-coverage/
-*.tsbuildinfo
 
-.venv/
-venv/
-__pycache__/
-*.py[cod]
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-
-# --- local data and generated artifacts -------------------------------------
-*.db
-*.db-journal
-*.sqlite
-*.sqlite3
-data/
-*.log
-
-# --- editor / OS -------------------------------------------------------------
+# editor / OS
 .DS_Store
-Thumbs.db
 .idea/
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
+.vscode/

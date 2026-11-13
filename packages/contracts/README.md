@@ -1,36 +1,19 @@
 # packages/contracts
 
-The API contract — **the single source of truth** for what the frontend sends and the
-backend returns. **Status: not scaffolded** — the mechanism is decided with the stack.
+The shapes the parts of the system agree on. Source of truth; a shared surface.
 
-Owner: `TODO` (see `docs/SYSTEM_MAP.md` §Module ownership)
+Owner: `TODO` (`docs/SYSTEM_MAP.md`)
 
-## Responsibility
+- Depends on: nothing in this repo.
+- Owns: request, response and error shapes, and whatever makes them usable by both
+  sides.
+- Not its job: runtime behaviour, storage, UI.
 
-- Define requests, responses, and error shapes for every endpoint.
-- Provide those definitions to both apps, so neither has a private copy.
+## Changing it
 
-Not this app's job: runtime behaviour, database queries, or UI concerns. If it needs a
-framework to run, it probably belongs in an app.
-
-## Rules
-
-1. **Change here first.** The contract changes in its own commit, before consumers.
-2. **Update every consumer in the same change.** A merged contract change with a
-   broken consumer is a broken `main`.
-3. **Announce it.** Contract changes break work in flight; say so in the channel.
-4. **Never hand-copy types** across the app boundary — import from this package.
-
-## Depends on
-
-Nothing in this repo. It must stay dependency-light and free of app imports.
-
-## Shape of a change
-
-`TODO`: once decided, document the workflow here — e.g. edit the schema/spec, run the
-generation command, commit both the source and the generated output (or state
-explicitly that output is generated at build time and gitignored).
+Only with authority (see `docs/CONTRIBUTING.md` §Shared surfaces). Change once, update
+every consumer in the same change, tell the team.
 
 ## Setup
 
-`TODO`: generation/lint/test commands for the contract itself.
+`TODO`: the mechanism — typed module, generated client, spec file — and its commands.

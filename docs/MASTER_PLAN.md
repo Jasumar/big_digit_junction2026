@@ -1,84 +1,61 @@
 # MASTER_PLAN
 
-Single plan for the project. Owns **what** we build and **who** builds it. Architecture
-detail lives in `SYSTEM_MAP.md`; workflow rules in `CONTRIBUTING.md`.
+What we build and who builds it. Architecture: `SYSTEM_MAP.md`. Workflow:
+`CONTRIBUTING.md`. Nothing below is decided yet — this is the shape to fill in.
 
-Status: scaffold — no challenge chosen, no scope fixed, no stack fixed. Sections below
-are the skeleton to fill in on day one, not decisions.
+## Challenge
 
-## 1. Challenge
+`TODO`: name, organiser, one-paragraph problem, link to the brief.
 
-`TODO`: challenge name, organiser, one-paragraph problem statement, link to the brief.
+## MVP scope
 
-## 2. MVP scope
+- **Must have** (demo fails without it): `TODO`
+- **Should have**: `TODO`
+- **Out of scope** — list the tempting things we are saying no to: `TODO`
 
-Keep this ruthless: what the demo must do, nothing else.
+## Demo
 
-**Must have** (demo fails without it)
+`TODO`: the 60–90s story, as a user walking through it, naming what is live and what is
+faked. It is the tiebreaker for every "should we build this?" question.
 
-- `TODO`
+## Milestones
 
-**Should have** (add if time allows)
+| ID | Milestone | Exit criterion |
+| --- | --- | --- |
+| M0 | Scaffold | `bash scripts/check.sh` green; a fresh clone works |
+| M1 | Walking skeleton | one thin path through every module |
+| M2 | MVP | must-have scope works end to end |
+| M3 | Demo polish | the demo runs twice in a row, unattended |
 
-- `TODO`
+`TODO`: real times for M1–M3.
 
-**Explicitly out of scope** (do not build, do not let agents build)
+## Tasks
 
-- `TODO`: authentication, admin panels, real-time sync, mobile app, … — list the
-  tempting things we are saying no to, so nobody builds them by accident.
-
-## 3. Demo goal
-
-`TODO`: the 60–90 second story told on stage. Write it as a user walking through the
-product, and name which parts are hard-coded, mocked, or live. Update it whenever
-scope changes — it is the tiebreaker for every "should we build this?" question.
-
-## 4. Milestones
-
-| ID | Milestone | Goal | Exit criterion |
-| --- | --- | --- | --- |
-| M0 | Scaffold | repo, docs, workflow in place | `bash scripts/check.sh` green; `main` clones and runs |
-| M1 | Walking skeleton | one thin end-to-end path through all modules | a request goes frontend → backend → db and back |
-| M2 | MVP | must-have scope complete | demo goal works end to end |
-| M3 | Demo polish | reliability, loading states, seed data, stage rehearsal | demo runs twice in a row without manual fixes |
-
-`TODO`: put real times against M1–M3 relative to the event start.
-
-## 5. Task ownership
-
-Task files live in `docs/tasks/` (one file per task, template there). This table is
-the index — keep it short.
+Index of `docs/tasks/`. Keep it short; one owner per task.
 
 | Task | Owner | Area | Depends on | Status |
 | --- | --- | --- | --- | --- |
-| `TODO` | `TODO` | `frontend` / `backend` / `contracts` / `db` | `TODO` | todo |
+| `TODO` | `TODO` | | | todo |
 
-Rules:
+## Open questions
 
-- One owner per task. Shared ownership means nobody is responsible.
-- A task that touches two areas is two tasks, unless it is explicitly a contract or
-  schema change (those are one task owned by one person).
-- Do not start a task whose dependency is not merged.
+| # | Question | Owner | Due |
+| --- | --- | --- | --- |
+| 1 | Which challenge? | `TODO` | day 1 |
+| 2 | Stack, and who owns setup? | `TODO` | day 1 |
+| 3 | Data: what is stored, where, and is it local at all? | `TODO` | day 1 |
+| 4 | External APIs and their keys? | `TODO` | day 1 |
+| 5 | Where does it run, and what is mocked in the demo? | `TODO` | day 1 |
 
-## 6. Open questions
+## Decision log
 
-| # | Question | Why it matters | Owner | Due |
-| --- | --- | --- | --- | --- |
-| 1 | Which challenge? | everything | `TODO` | day 1 |
-| 2 | Stack (and who owns the setup)? | blocks all code | `TODO` | day 1 |
-| 3 | Data sources / external APIs and their keys? | blocks backend | `TODO` | day 1 |
-| 4 | Where does it run / how is it demoed? | blocks integration | `TODO` | day 1 |
-| 5 | What is mocked vs real in the demo? | scope | `TODO` | day 1 |
-
-## 7. Decision log
-
-Append-only. One line per decision that others must not silently reverse.
+Append-only. One line per decision others must not silently reverse.
 
 | Date | Decision | Why | By |
 | --- | --- | --- | --- |
-| `TODO` | Monorepo with `apps/*` + `packages/*`, one branch/worktree per task | parallel work, few conflicts | scaffold |
+| 2026-11-13 | Monorepo, one branch/worktree per task, shared surfaces need authority | parallel work, few conflicts | scaffold |
 
-## 8. Risks
+## Risks
 
-`TODO`: e.g. an external API that may be rate-limited or unavailable on the day; a
-dependency that needs approval; a demo that needs network. Name the fallback for each.
+`TODO`: name each risk and its fallback — an API that rate-limits on the day, a demo
+that needs network, a dependency that needs approval.

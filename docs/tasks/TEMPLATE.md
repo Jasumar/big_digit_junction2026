@@ -1,82 +1,49 @@
 # Task template
 
-Copy this file to `docs/tasks/T<nnn>-<slug>.md`, fill every section, then create the
-branch and worktree from the same slug. Delete the guidance lines in angle brackets.
-
-Keep tasks small enough to merge the same day. If it does not fit, split it.
+Copy to `docs/tasks/T<nnn>-<slug>.md`, fill it in, create the branch from the same slug.
+Keep it small enough to merge the same day; if not, split it.
 
 ---
 
 # T<nnn> — <short imperative title>
 
-**Owner:** <name / handle; exactly one>
-**Status:** todo | in progress | blocked | review | merged
+**Owner:** <one name> **Status:** todo | in progress | blocked | review | merged
 **Branch:** `task/t<nnn>-<slug>`
-**Worktree:** `.worktrees/task-t<nnn>-<slug>`
-**Area:** frontend | backend | contracts | db | infra | docs
 
 ## Goal
 
-<1–3 sentences: what exists after this task that does not exist before. Describe the
-outcome, not the steps.>
-
-## Context — read first
-
-- <docs/tasks/T<nnn>-<dep>.md (dependency)>
-- <docs/MASTER_PLAN.md §…>
-- <docs/SYSTEM_MAP.md §…>
-- <apps/<app>/README.md>
+<What exists after this that did not before. Outcome, not steps.>
 
 ## Allowed files
 
-The only paths this task may modify. Anything else needs agreement first.
+Everything else needs agreement first.
 
 ```text
 apps/<app>/...
 ```
 
-**Read-only / off-limits:**
+**Shared surfaces touched:** <none, or which, and who agreed>
 
-```text
-packages/contracts/**   # unless this task is the contract change
-docs/MASTER_PLAN.md
-```
+## Depends on
 
-**Shared files touched:** <list, or "none">
-
-## Dependencies
-
-- **Needs merged first:** <T<nnn>, or "none">
-- **Blocks:** <T<nnn>, or "none">
-- **Contract impact:** <none | describe the shape change and who consumes it>
-- **Schema impact:** <none | tables/columns, plus the migration name>
+- Needs merged first: <T<nnn> | none>
+- Blocks: <T<nnn> | none>
 
 ## Acceptance criteria
 
-Checkable statements. Each must be verifiable by a command, a test, or a named manual
-step. "Works well" is not an acceptance criterion.
+Each one checkable by a command, a test, or a named manual step.
 
-- [ ] <behaviour the demo depends on>
-- [ ] <error/empty case handled>
-- [ ] <contract consumer updated, if contract change>
-- [ ] <documentation updated: app README / SYSTEM_MAP, if boundary changed>
+- [ ] <behaviour the demo needs>
+- [ ] <error / empty case>
+- [ ] <consumers updated, if a shared surface changed>
 
-## Verification
-
-Commands that must pass before merging (fill in once the stack exists; leave `TODO`
-rather than inventing one):
+## Verify
 
 ```bash
 bash scripts/check.sh
-# TODO: lint / type check / test for this area
+# TODO: anything else this area has — leave TODO rather than inventing a command
 ```
 
-Manual check:
+## Notes
 
-1. <step>
-2. <expected result>
-
-## Notes / decisions
-
-<Anything you had to decide that the task did not specify, and anything you
-deliberately did not do. Reviewers read this section first.>
+<What you decided alone, and what you deliberately did not do.>
