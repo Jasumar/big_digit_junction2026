@@ -23,7 +23,7 @@ cd .worktrees/task-t005-upload-endpoint
 git add -A && git commit -m "T005: add upload endpoint"
 
 # 4. sync with main, resolve, verify, then merge
-git fetch origin && git rebase origin/main
+git fetch origin && git rebase origin/main   # no remote yet? `git rebase main`
 bash scripts/check.sh
 cd ../.. && git checkout main && git merge --no-ff task/t005-upload-endpoint
 
