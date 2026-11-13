@@ -1,7 +1,7 @@
 # apps/bank-backend
 
 **S-pankki backend** in the architecture (`docs/SYSTEM_MAP.md`). The orchestrator: every
-hop in the flow goes through it. **Not scaffolded** — stack and transport undecided.
+hop in the flow goes through it. Python standard library; `server.py` is the entry point.
 
 Owner: `TODO` (`docs/SYSTEM_MAP.md`)
 
@@ -23,9 +23,14 @@ Owner: `TODO` (`docs/SYSTEM_MAP.md`)
 
 ## Setup
 
-`TODO`: install, run, build, test — mirrored in `README.md`.
+```bash
+python3 apps/bank-backend/server.py      # API + UI on http://localhost:8000
+bash scripts/test.sh                      # tests
+```
 
 ## Conventions
 
-`TODO`: how a request flows through this app, how approval is decided, how errors are
-shaped.
+`orchestrator.handle_command` is steps 1–7 in one function. `approval.py` is the policy
+(Decisions #13). `present.py` builds charts from results. API: `GET /api/health`,
+`/api/customers`, `/api/overview?customer_id=`, `POST /api/command`. Errors are
+`{"error": "..."}` with 400/404/500.

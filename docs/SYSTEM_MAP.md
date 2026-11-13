@@ -102,6 +102,8 @@ a local edit (rules: `docs/CONTRIBUTING.md` §Shared surfaces).
 
 ## Undecided
 
-`TODO`: stack per app, transport between them, which model and runtime, what "cloud"
-is for the demo, where each part runs, what is mocked. Each gets a line here when
-decided — and a line in `docs/MASTER_PLAN.md` §Decision log.
+Decided for the MVP in `docs/tasks/Decisions.md`: Python stdlib backend, plain-JS UI,
+SQLite as "cloud", HTTP between UI and backend, in-process calls for AI and
+calculation, stub AI.
+
+Still open: which real model and runtime; where it is hosted; real authentication.

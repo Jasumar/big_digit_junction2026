@@ -40,13 +40,13 @@ Index of `docs/tasks/`. Keep it short; one owner per task.
 
 | Task | Owner | Area | Depends on | Status |
 | --- | --- | --- | --- | --- |
-| [T001](tasks/T001-choose-stack.md) | `TODO` | all | — | todo |
-| [T002](tasks/T002-contracts-v0.md) | `TODO` | contracts | T001 | todo |
-| [T003](tasks/T003-cloud-mock-and-first-tool.md) | `TODO` | cloud, calculation | T002 | todo |
-| [T004](tasks/T004-bank-backend-skeleton.md) | `TODO` | bank-backend | T002 | todo |
-| [T005](tasks/T005-local-ai-spike.md) | `TODO` | ai | T001 | todo |
-| [T006](tasks/T006-frontend-client-skeleton.md) | `TODO` | frontend, client | T002 | todo |
-| [T007](tasks/T007-walking-skeleton.md) | `TODO` | all | T003–T006 | todo |
+| [T001](tasks/T001-choose-stack.md) | `TODO` | all | — | review |
+| [T002](tasks/T002-contracts-v0.md) | `TODO` | contracts | T001 | review |
+| [T003](tasks/T003-cloud-mock-and-first-tool.md) | `TODO` | cloud, calculation | T002 | review |
+| [T004](tasks/T004-bank-backend-skeleton.md) | `TODO` | bank-backend | T002 | review |
+| [T005](tasks/T005-local-ai-spike.md) | `TODO` | ai | T001 | review |
+| [T006](tasks/T006-frontend-client-skeleton.md) | `TODO` | frontend, client | T002 | review |
+| [T007](tasks/T007-walking-skeleton.md) | `TODO` | all | T003–T006 | review |
 
 Order: T001 first (everyone, short). Then T002. Then T003, T004, T005, T006 in
 parallel — one person each. T007 joins them into M1.
@@ -72,6 +72,7 @@ Append-only. One line per decision others must not silently reverse.
 | --- | --- | --- | --- |
 | 2026-11-13 | Monorepo, one branch/worktree per task, shared surfaces need authority | parallel work, few conflicts | scaffold |
 | 2026-11-13 | Architecture: UI → client → S-pankki backend ↔ local AI model; calculation tools inside the backend read cloud data (`SYSTEM_MAP.md`) | team diagram | team |
+| 2026-11-13 | MVP built with stdlib Python, plain JS, SQLite, stub AI; 19 smaller choices in `docs/tasks/Decisions.md` | ship something that runs | MVP build |
 | 2026-11-13 | The AI model never reads client data; it only sees results of backend-approved calculations | privacy, the core of the pitch | team |
 
 ## Risks

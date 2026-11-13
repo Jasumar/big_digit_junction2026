@@ -1,9 +1,7 @@
 # packages/cloud
 
 **Cloud** in the architecture (`docs/SYSTEM_MAP.md`). Where client financial data
-lives. **Not scaffolded** — for the hackathon this is likely a mock dataset or a
-stand-in for S-pankki's real systems; what it really is, and where it runs, is
-undecided.
+lives. Here it is a **SQLite file** built from the hackathon CSVs (Decisions #5).
 
 Owner: `TODO` (`docs/SYSTEM_MAP.md`)
 
@@ -22,4 +20,10 @@ store (or mock) from nothing.
 
 ## Setup
 
-`TODO`: create / seed / reset, once it is decided what "the cloud" is for the demo.
+```bash
+python3 packages/cloud/seed.py                    # committed 6-customer fixture
+python3 packages/cloud/seed.py --csv-dir <dir>    # full dataset, ~80 s, ~500 MB
+```
+Output `packages/cloud/data/s_pankki.sqlite` (gitignored). `taxonomy.py` defines which
+categories are spending and the three buckets; `store.py` is the read-only access
+(open with `mode=ro`); tables: `customers`, `transactions`, `peer_benchmark`, `meta`.

@@ -1,10 +1,9 @@
 # apps/client
 
 **Client device / Backend** in the architecture (`docs/SYSTEM_MAP.md`). The layer on
-the user's device between the UI and the S-pankki backend. **Not scaffolded** — it is
-not decided whether this is a separate process, a local server, or simply the data
-layer inside the frontend app. If it ends up thin, fold it into `apps/frontend/` and
-update `docs/SYSTEM_MAP.md`.
+the user's device between the UI and the S-pankki backend. **Built as a thin JS module**
+(`client.js`) the frontend imports from `/client/client.js`; not a separate process
+(`docs/tasks/Decisions.md` #3).
 
 Owner: `TODO` (`docs/SYSTEM_MAP.md`)
 
@@ -18,8 +17,10 @@ Owner: `TODO` (`docs/SYSTEM_MAP.md`)
 
 ## Setup
 
-`TODO`: install, run, build, test — mirrored in `README.md`.
+Nothing to install; served by the backend.
 
 ## Conventions
 
-`TODO`: how a command becomes a request, how errors reach the UI.
+`createClient().command(customerId, text, history)` → POST `/api/command`;
+`overview(id)`, `customers()`. Failures throw `CoachError` with a user-readable message
+(timeout, backend down, backend error).

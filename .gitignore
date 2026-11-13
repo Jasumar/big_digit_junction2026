@@ -17,3 +17,6 @@ build/
 .DS_Store
 .idea/
 .vscode/
+packages/cloud/data/
+__pycache__/
+*.pyc

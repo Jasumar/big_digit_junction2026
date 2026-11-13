@@ -1,8 +1,8 @@
 # apps/ai
 
 **Local AI model** in the architecture (`docs/SYSTEM_MAP.md`). Turns a client command
-plus calculation results into an answer and insights. **Not scaffolded** — model,
-runtime and hosting undecided.
+plus calculation results into an answer and insights. **Stub only** — a rule-based provider
+that works offline. Model, runtime and API are still to be chosen.
 
 "Local" means the model runs on infrastructure we control, so client data is not sent
 to a third-party model API. What that means for the demo is an open question in
@@ -20,8 +20,14 @@ Owner: `TODO` (`docs/SYSTEM_MAP.md`)
 
 ## Setup
 
-`TODO`: how to get the model and runtime locally, how to start it, hardware needed.
+Stub needs nothing (`AI_PROVIDER=stub`, the default). **To wire a real model:** add
+`apps/ai/<name>_provider.py` with a `Provider` class (`name`, `plan`, `compose`, see
+`provider.py`) and register it in `get_provider`. `plan` receives the tool catalog in
+JSON-schema form, so provider tool-calling maps onto it directly; return
+`{"requests": [{"tool", "args"}]}` or `{"reply": ...}`. `compose` gets the results and
+returns `{"text", "insights": [{title, body, kind}]}`. The backend validates every
+request (step 3) and builds charts itself.
 
 ## Conventions
 
-`TODO`: where prompts live, how tool calls are expressed, how to evaluate output.
+`stub_provider.py`: intents in `plan`, wording in `_<tool>` methods of `compose`.

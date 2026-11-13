@@ -1,6 +1,6 @@
 # T006 — Frontend and client skeleton
 
-**Owner:** `TODO` **Status:** todo
+**Owner:** `TODO` **Status:** review (built in MVP, see Decisions.md)
 **Branch:** `task/t006-frontend-client-skeleton`
 
 ## Goal

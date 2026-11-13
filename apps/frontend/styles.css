@@ -1,0 +1,71 @@
+:root {
+  --green: #00ac4e; --green-dark: #00532d; --ink: #12313f; --muted: #667a85;
+  --bg: #f3f6f4; --card: #fff; --line: #dfe7e3;
+  --essentials: #2f6fed; --necessities: #e8833a; --everyday: #00ac4e; --peer: #b9c4cb;
+  --good: #00ac4e; --warn: #e8833a; --bad: #d64545;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink);
+  background: var(--bg); }
+.sr { position: absolute; left: -9999px; }
+.top { position: sticky; top: 0; z-index: 5; display: flex; justify-content: space-between;
+  align-items: center; padding: 10px 14px; background: var(--green-dark); color: #fff;
+  padding-top: calc(10px + env(safe-area-inset-top)); }
+.brand { font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.logo { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%;
+  background: var(--green); font-weight: 800; }
+select { max-width: 150px; padding: 6px 8px; border-radius: 8px; border: 0; font: inherit; }
+main { max-width: 640px; margin: 0 auto; padding: 14px 14px 170px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px;
+  margin-bottom: 12px; }
+.skeleton { color: var(--muted); }
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+  margin: 0 0 8px; }
+.hero { display: flex; gap: 10px; flex-wrap: wrap; }
+.stat { flex: 1 1 120px; background: var(--bg); border-radius: 12px; padding: 10px 12px; }
+.stat .l { font-size: 12px; color: var(--muted); }
+.stat .v { font-size: 22px; font-weight: 700; }
+.stat .s { font-size: 12px; color: var(--muted); }
+.stat.good .v { color: var(--good); } .stat.warn .v { color: var(--warn); }
+.stat.bad .v { color: var(--bad); }
+.stack { display: flex; height: 14px; border-radius: 7px; overflow: hidden; margin: 10px 0 6px; }
+.legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; }
+.msg { margin: 12px 0; }
+.me { text-align: right; }
+.me span { display: inline-block; background: var(--green-dark); color: #fff; padding: 8px 12px;
+  border-radius: 16px 16px 4px 16px; max-width: 85%; text-align: left; }
+.coach { background: var(--card); border: 1px solid var(--line); border-radius: 16px 16px 16px 4px;
+  padding: 12px; }
+.coach p { margin: 0 0 8px; }
+.err { color: var(--bad); }
+.insight { border-left: 4px solid var(--line); padding: 4px 10px; margin: 8px 0; font-size: 14px; }
+.insight b { display: block; }
+.insight.good { border-color: var(--good); } .insight.warn { border-color: var(--warn); }
+.insight.tip { border-color: var(--essentials); }
+.bars { margin: 10px 0; }
+.bars h3, .tbl h3 { font-size: 13px; margin: 0 0 6px; color: var(--muted); }
+.bar { display: grid; grid-template-columns: 150px 1fr auto; gap: 8px; align-items: center;
+  font-size: 13px; margin: 3px 0; }
+.bar .lbl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar .track { background: var(--bg); border-radius: 6px; height: 12px; overflow: hidden; }
+.bar .fill { height: 100%; border-radius: 6px; background: var(--muted); }
+.bar .val { font-variant-numeric: tabular-nums; text-align: right; }
+.bar .val small { color: var(--muted); margin-left: 4px; }
+.tbl table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.tbl td, .tbl th { padding: 5px 4px; border-bottom: 1px solid var(--line); text-align: right; }
+.tbl td:first-child, .tbl th:first-child { text-align: left; }
+.trace { margin-top: 8px; font-size: 12px; color: var(--muted); }
+.dock { position: fixed; left: 0; right: 0; bottom: 0; background: var(--card);
+  border-top: 1px solid var(--line); padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); }
+.chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; max-width: 640px;
+  margin: 0 auto; }
+.chip { flex: none; border: 1px solid var(--green); color: var(--green-dark); background: #fff;
+  border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 14px; cursor: pointer; }
+form { display: flex; gap: 8px; max-width: 640px; margin: 0 auto; }
+input { flex: 1; padding: 12px 14px; border-radius: 999px; border: 1px solid var(--line);
+  font: inherit; }
+form button { width: 46px; border: 0; border-radius: 50%; background: var(--green); color: #fff;
+  font-size: 18px; cursor: pointer; }
+button:disabled { opacity: .5; }
+.typing { color: var(--muted); font-style: italic; }
