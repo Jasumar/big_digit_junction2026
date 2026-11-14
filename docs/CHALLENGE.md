@@ -92,7 +92,7 @@ As of the first MVP (`docs/tasks/Decisions.md`):
 | Safe to spend this week | done — `safe_to_spend` |
 | Free exploration (MyData) | done — `explore_transactions` |
 | Benchmarks | partly — peers from the dataset's own age bands, **no open data yet** |
-| "Taxis last month" | partly — taxis are MCC 4121 inside `Transportation` (59k rows); no tool filters by MCC yet |
+| "Taxis last month" | done — `subcategory: taxi` by merchant category code (T014); totals are minimums (some purchases have no code) |
 | What-if ("reduce dining out by 20%") | done — `simulate_change` (category or basket, ±%, horizon) |
 | Safe to save | **missing** |
 | Plain-language explanations of concepts | **missing** beyond answer text; depends on the real AI provider |

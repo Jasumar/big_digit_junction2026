@@ -72,6 +72,14 @@ by raising it; the "Where" column says what to touch.
 | 55 | **Every follow-up is checked in the backend** (`followups.clean`): answerable per the scope check, no merchant ids, no numbers the tools did not produce, no duplicates or repeats of the question. | A suggested question must never lead to a "can't" answer or an invented figure. | `apps/bank-backend/followups.py` |
 | 56 | **Provider suggestions first, then localized rule-based ones fill up to 3** (category names from the glossary; never "cut rent"). | Gemma often suggests one vague question; OpenRouter suggests none; the stub is English-only. | `followups.py`, `orchestrator.py` |
 
+| 57 | **MCC reference table from github.com/greggles/mcc-codes** (Unlicense), committed in `fixture/` and loaded into `mcc_codes` for both sample and full builds. | Official names for every code; public-domain data; tiny. | `packages/cloud/seed.py`, `store.py` |
+| 58 | **Subcategories by MCC** (29 keys covering all 36 codes; names in fi/sv/en) as an `explore_transactions` filter and grouping; totals marked as minimums because ~5% of purchases have no code. Coffee and tobacco stay unsupported (no code). | "Taxis last month" and similar questions; honest about the coverage gap. | `taxonomy.py`, `glossary.py`, `tools.py`, `scope.py` |
+| 59 | **T011 life signals keep their own short MCC names and rules**; tests assert they match the reference table and the subcategories (taxis, public transport), and the `--report` lists codes missing from the table. | One source of truth without rewriting the T011 module. | `calculation/signals.py`, `tests/test_flow.py` |
+
+| 60 | **No merchant-code warning to users** (team decision): subcategory answers show no notice about uncoded purchases; instead the model is told to give the amount plainly, never claim it includes *all* such purchases, and not mention merchant codes. | A visible "totals are minimums" note was judged noise (and produced "at least €0"); the quiet rule still prevents "includes all taxi payments". | `llm_provider.py`, `calculation/tools.py` |
+
+| 61 | **No warning boxes in the UI** (team decision): `answer.notice` is not rendered; the limitation still reaches the model, so the answer text states it once. The field stays in the API (evaluation `notice` check, tests). | The box repeated the first sentence of the answer. | `apps/frontend/app.js`, `styles.css` |
+
 ## Known limits
 
 - Stub understands English keywords only; Finnish questions and anything outside its

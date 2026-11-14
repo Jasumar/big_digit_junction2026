@@ -84,6 +84,7 @@ T = {
     "weekday": {"fi": "viikonpäivä", "sv": "veckodag"},
     "hour_band": {"fi": "vuorokaudenaika", "sv": "tid på dygnet"},
     "bucket": {"fi": "menokori", "sv": "utgiftskorg"}, "none": {"fi": "yhteensä", "sv": "totalt"},
+    "subcategory": {"fi": "alaluokka", "sv": "underkategori"},
 }
 WEEKDAYS = {"fi": dict(zip("Mon Tue Wed Thu Fri Sat Sun".split(),
                            "ma ti ke to pe la su".split())),
@@ -117,9 +118,12 @@ class Fmt:
         return s + ("%" if self.lang == "en" else " %")
 
     def date(self, iso):
-        if self.lang == "en" or not iso:
+        if not iso:
             return iso
         y, m, d = iso.split("-")
+        if self.lang == "en":  # "1 Oct 2025", like dates in English answer text
+            return "%d %s %s" % (int(d), "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec"
+                                 .split()[int(m) - 1], y)
         return "%d.%d.%s" % (int(d), int(m), y)
 
     def cat(self, name):
@@ -267,6 +271,8 @@ def _group_label(g, group_by, f):
         return f.cat(label)
     if group_by == "bucket":
         return f.bucket(g["key"])
+    if group_by == "subcategory":
+        return glossary.subcategory(g["key"], f.lang)
     if group_by == "weekday":
         return WEEKDAYS.get(f.lang, {}).get(label, label)
     if group_by == "hour_band":

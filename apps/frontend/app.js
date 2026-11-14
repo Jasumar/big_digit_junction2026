@@ -106,7 +106,8 @@ function renderVisual(v) {
 
 function renderAnswer(a) {
   const box = el("div", "msg coach");
-  if (a.notice) box.append(el("div", "notice", a.notice));
+  // a.notice (what the tools could not cover) is not shown as a box: the answer text
+  // already says it, because the backend passes it to the model (team decision, #61)
   box.append(el("p", "", a.text));
   for (const v of a.visuals) box.append(renderVisual(v));
   for (const i of a.insights) {

@@ -46,7 +46,21 @@ class Store:
                 "transactions": int(meta.get("rows", 0)),
                 "data_from": meta.get("data_min"), "data_to": meta.get("data_max"),
                 "mortgage_applications": int(meta.get("mortgage_applications", 0)),
-                "mortgage_events": int(meta.get("mortgage_events", 0))}
+                "mortgage_events": int(meta.get("mortgage_events", 0)),
+                "mcc_codes": int(meta.get("mcc_codes", 0))}
+
+    def mcc_names(self, codes=None):
+        """Official MCC names from the reference table ({} on databases built before it)."""
+        try:
+            if codes:
+                codes = sorted(set(codes))
+                rows = self.rows("SELECT mcc, name FROM mcc_codes WHERE mcc IN (%s)"
+                                 % ",".join("?" * len(codes)), codes)
+            else:
+                rows = self.rows("SELECT mcc, name FROM mcc_codes")
+        except Exception:  # older database without the table: rebuild with seed.py
+            return {}
+        return {r["mcc"]: r["name"] for r in rows}
 
     def peer(self, age_band, key):
         return self.one("SELECT avg_monthly, median_monthly, n FROM peer_benchmark"

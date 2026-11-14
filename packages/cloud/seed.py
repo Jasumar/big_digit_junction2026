@@ -31,6 +31,10 @@ CU_CSV = "tx_customers_junction.csv"
 MTG_EVENTS_CSV = "mtg_negotiation_history.csv"
 MTG_LINK_CSV = "mtg_tx_customer_link_and_final_mtg_infio.csv"
 ALL_CSVS = (TX_CSV, CU_CSV, MTG_EVENTS_CSV, MTG_LINK_CSV)
+# Merchant Category Code reference (github.com/greggles/mcc-codes, Unlicense / public
+# domain). Reference data, not customer data: committed in fixture/ and used for both the
+# sample and the full build; a copy in the --csv-dir folder takes precedence.
+MCC_CSV = "mcc_codes.csv"
 MONTHS = {m: i + 1 for i, m in enumerate(
     "JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC".split())}
 
@@ -53,6 +57,9 @@ CREATE TABLE mortgage_applications (
   final_requested_loan_eur REAL, final_equity_amount_eur REAL,
   final_collateral_value_eur REAL, required_monthly_income_eur REAL,
   final_loan_to_value REAL);
+CREATE TABLE mcc_codes (
+  mcc TEXT PRIMARY KEY, name TEXT NOT NULL, combined_description TEXT,
+  usda_description TEXT, irs_description TEXT, irs_reportable TEXT);
 CREATE TABLE mortgage_events (
   id INTEGER PRIMARY KEY, mortgage_customer_id TEXT NOT NULL, ts TEXT NOT NULL,
   event_type TEXT NOT NULL, property_id TEXT, property_type TEXT,
@@ -145,11 +152,12 @@ def build(csv_dir, db_path):
 
     mn, mx = db.execute("SELECT MIN(tx_date), MAX(tx_date) FROM transactions").fetchone()
     n_apps, n_events = load_mortgages(db, csv_dir)
+    n_mcc = load_mcc_codes(db, csv_dir)
     source = "fixture" if os.path.realpath(csv_dir) == os.path.realpath(FIXTURE_DIR) else "full"
     db.executemany("INSERT INTO meta VALUES (?,?)",
                    [("data_min", mn), ("data_max", mx), ("rows", str(n)), ("source", source),
                     ("mortgage_applications", str(n_apps)),
-                    ("mortgage_events", str(n_events))])
+                    ("mortgage_events", str(n_events)), ("mcc_codes", str(n_mcc))])
 
     build_peer_benchmark(db, ages)
     db.commit()
@@ -158,6 +166,20 @@ def build(csv_dir, db_path):
     os.replace(db_path, final_path)
     print("seeded %d transactions, %d customers, %d mortgage applications (%d events)"
           " -> %s (%.1fs)" % (n, len(ages), n_apps, n_events, final_path, time.time() - t0))
+
+
+def load_mcc_codes(db, csv_dir):
+    """MCC reference table: code -> official names. Returns rows loaded."""
+    path = os.path.join(csv_dir, MCC_CSV)
+    if not os.path.exists(path):
+        path = os.path.join(FIXTURE_DIR, MCC_CSV)
+    with open(path, encoding="utf-8-sig", newline="") as f:
+        rows = [(r["mcc"].strip().zfill(4), r["edited_description"].strip(),
+                 r.get("combined_description"), r.get("usda_description"),
+                 r.get("irs_description"), r.get("irs_reportable"))
+                for r in csv.DictReader(f) if r.get("mcc")]
+    db.executemany("INSERT INTO mcc_codes VALUES (?,?,?,?,?,?)", rows)
+    return len(rows)
 
 
 def load_mortgages(db, csv_dir):
