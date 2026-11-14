@@ -3,7 +3,7 @@
 
     python3 apps/bank-backend/server.py            # http://localhost:8000
 
-Env: PORT (8000), AI_PROVIDER (stub), SPANKKI_DB (packages/cloud/data/s_pankki.sqlite),
+Env: PORT (8000), HOST (127.0.0.1; 0.0.0.0 in a container), AI_PROVIDER (stub), SPANKKI_DB (packages/cloud/data/s_pankki.sqlite),
 REQUIRE_FULL_DATA (set to 1 to refuse to start on the sample).
 If the database is missing it is built from the small committed fixture, with a loud
 warning; /api/health and the UI also say which data is loaded.
@@ -141,10 +141,13 @@ def main():
     except Exception as e:  # unknown AI_PROVIDER or a provider refusing to start (missing key)
         sys.exit("refusing to start: %s" % e)
     port = int(os.environ.get("PORT", "8000"))
-    srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    # 127.0.0.1 by default (Decisions #17); a container sets HOST=0.0.0.0 (Decisions #65)
+    host = os.environ.get("HOST") or "127.0.0.1"
+    srv = ThreadingHTTPServer((host, port), Handler)
     info = Handler.store.info()
-    print("S-pankki coach on http://localhost:%d  (AI provider: %s, data: %s, %d customers,"
-          " %s)" % (port, Handler.provider.name, info["source"], info["customers"], info["path"]), flush=True)
+    print("S-pankki coach on http://%s:%d  (AI provider: %s, data: %s, %d customers,"
+          " %s)" % (host, port, Handler.provider.name, info["source"], info["customers"],
+                    info["path"]), flush=True)
     try:
         srv.serve_forever()
     except KeyboardInterrupt:
