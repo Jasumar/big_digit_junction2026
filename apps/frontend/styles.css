@@ -76,6 +76,10 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: v
   margin: 0 auto; }
 .chip { flex: none; border: 1px solid var(--green); color: var(--green-dark); background: #fff;
   border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 14px; cursor: pointer; }
+.followups { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.followups .chip { max-width: 100%; white-space: normal; text-align: left; }
+.followups .chip.clarify { border-color: var(--necessities); color: #8a4a12; }
+.followups .chip:disabled { opacity: .5; cursor: default; }
 form { display: flex; gap: 8px; max-width: 640px; margin: 0 auto; }
 input { flex: 1; padding: 12px 14px; border-radius: 999px; border: 1px solid var(--line);
   font: inherit; }

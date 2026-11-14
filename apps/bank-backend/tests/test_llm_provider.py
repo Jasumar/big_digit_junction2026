@@ -184,6 +184,29 @@ class TestLLMProvider(unittest.TestCase):
         self.assertEqual(format_dates("until 2026-09-30", "en"), "until 30 Sep 2026")
         self.assertEqual(format_dates("id 2026-13-40", "fi"), "id 2026-13-40")
 
+    def test_follow_ups_pass_through_formatted_and_checked(self):
+        FakeLLM.replies = [
+            {"requests": [{"tool": "spending_breakdown", "args": {}}], "coverage": "full",
+             "lang": "fi"},
+            {"lang": "fi", "text": "Kulutit rahaa.", "insights": [],
+             "follow_ups": [
+                 {"kind": "clarify", "label": "Ravintolat −20 %?",
+                  "prompt": "Mitä jos vähentäisin ravintoloita 20 %?"},
+                 {"kind": "explore", "label": "Eilen?", "prompt": "Paljonko kulutin eilen?"},
+                 {"kind": "explore", "label": "Säästö 9 999 €?",
+                  "prompt": "Miten säästän 9 999 €?"}]},
+        ]
+        a = orchestrator.handle_command({"customer_id": "CUST00001", "text": "Mihin rahat?",
+                                         "lang": "fi"}, self.store, self.p)
+        self.assertEqual(validate(ANSWER, a), [])
+        prompts = [f["prompt"] for f in a["follow_ups"]]
+        self.assertIn("Mitä jos vähentäisin ravintoloita 20 %?", prompts)
+        self.assertNotIn("Paljonko kulutin eilen?", prompts)   # "yesterday": not answerable
+        self.assertFalse(any("9 999" in p for p in prompts))     # invented number
+        self.assertEqual(a["follow_ups"][0]["kind"], "clarify")
+        compose_prompt = FakeLLM.seen[1][1]["messages"][0]["content"]
+        self.assertIn("follow_ups", compose_prompt)
+
     def test_registry(self):
         os.environ["AI_BASE_URL"] = self.url
         try:

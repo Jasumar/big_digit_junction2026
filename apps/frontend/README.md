@@ -37,3 +37,9 @@ for the AI. Add a UI text: add the key to all three languages in `i18n.js` —
 `index.html` shell, `app.js` renders the home card and answers, `styles.css`. An answer
 is `{text, insights, visuals, trace}`; visuals are `stats`, `bars`, `table` — to add a
 visual type, add it in `bank-backend/present.py` and in `renderVisual`.
+
+## Follow-up questions
+
+`renderAnswer` shows `answer.follow_ups` as buttons under the answer ("clarify" ones in
+orange). Tapping sends the button's `prompt` as the next question (with the current UI
+language) and disables the row. Labels come from the backend in the answer's language.

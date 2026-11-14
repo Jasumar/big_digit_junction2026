@@ -68,6 +68,10 @@ by raising it; the "Where" column says what to touch.
 | 52 | **Selected language is a fallback for the AI**, sent as optional `lang` on the command: answers still follow the question's language; the selection decides when that is unclear, and is the default for charts/notices when a provider reports no language (e.g. OpenRouter). | Team choice; also fixes English charts for OpenRouter answers. | `orchestrator.py`, `llm_provider.py`, `client.js` |
 | 53 | **Home-card basket names come from the backend glossary** via `/api/overview?lang=` (`bucket_labels`), not a second copy in JS. UI text check runs in `scripts/test.sh` with Node 20.10+ in ES-module mode (no `package.json`); skipped with a note on older Node. | One source for basket names; no new tooling. | `orchestrator.py`, `server.py`, `scripts/test.sh` |
 
+| 54 | **Follow-up questions ported by hand from `feat/t009`** (CuriousGeorg1) onto current `main`, not merged: the branch predated T010–T012 and would have overwritten newer orchestrator fields and prompts. | Keep the feature, keep everything newer. | `docs/tasks/T013-follow-up-questions.md` |
+| 55 | **Every follow-up is checked in the backend** (`followups.clean`): answerable per the scope check, no merchant ids, no numbers the tools did not produce, no duplicates or repeats of the question. | A suggested question must never lead to a "can't" answer or an invented figure. | `apps/bank-backend/followups.py` |
+| 56 | **Provider suggestions first, then localized rule-based ones fill up to 3** (category names from the glossary; never "cut rent"). | Gemma often suggests one vague question; OpenRouter suggests none; the stub is English-only. | `followups.py`, `orchestrator.py` |
+
 ## Known limits
 
 - Stub understands English keywords only; Finnish questions and anything outside its
