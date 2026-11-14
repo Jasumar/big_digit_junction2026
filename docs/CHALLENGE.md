@@ -96,6 +96,6 @@ As of the first MVP (`docs/tasks/Decisions.md`):
 | What-if ("reduce dining out by 20%") | done — `simulate_change` (category or basket, ±%, horizon) |
 | Safe to save | **missing** |
 | Plain-language explanations of concepts | **missing** beyond answer text; depends on the real AI provider |
-| Real conversational AI | **missing** — rule-based stub until a provider is wired in |
-| Finnish / Swedish | **missing** — UI, charts and stub are English-only; plan in `apps/ai/README.md` §Language |
+| Real conversational AI | done — Gemma 3 27B on Modal answers in Finnish and English (T008); stub as offline fallback |
+| Finnish / Swedish | partly — Gemma answers in the user's language; UI, charts and stub are still English-only |
 | Multi-bank view (bonus) | not started |

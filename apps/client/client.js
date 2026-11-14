@@ -3,7 +3,7 @@
 
 export class CoachError extends Error {}
 
-export function createClient({ baseUrl = "", timeoutMs = 30000 } = {}) {
+export function createClient({ baseUrl = "", timeoutMs = 150000 } = {}) {
   async function request(path, options = {}) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
