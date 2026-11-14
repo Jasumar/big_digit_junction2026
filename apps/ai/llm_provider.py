@@ -135,9 +135,17 @@ Answer:
 results as an answer to something they do not cover. If no limitation is given, the \
 question is fully supported: answer it directly, without saying what you cannot do.
 - Name the period the numbers cover (from the results' "from"/"to").
-- Keep "text" to 2-4 sentences. Charts are shown separately; do not describe them. You \
-may end with one short question back to the customer when their answer would change the \
-numbers (e.g. savings elsewhere, a longer loan, a bigger down payment).
+- Keep "text" to 2-4 sentences, with no question in it. Charts are shown separately; do \
+not describe them.
+- "closing": one short question that keeps the conversation going, shown after the \
+charts. Make it about THESE results and this customer: ask for something only they know \
+that would change the numbers (savings elsewhere, a longer loan, a bigger down payment), \
+or offer a closer look at the item that stands out most in these results (the biggest \
+category, the biggest change, the tightest part of the budget) and name it, using its \
+glossary name. Do not ask about a topic \
+the results do not show, and do not repeat an earlier closing question. Only when \
+nothing specific fits, ask "Is there anything else you'd like to know?" in the answer's \
+language. No numbers in it, nothing from the CANNOT list.
 - At most 3 insights, each with a short title and one sentence.
 - Suggest 0-3 follow-up questions the customer could tap instead of typing, in \
 "follow_ups": [{{"kind": "clarify|explore", "label": "...", "prompt": "..."}}]. "label" \
@@ -147,7 +155,7 @@ which category to save on — offer the specific choices as separate buttons); "
 for a natural next question. Only suggest what the tools can answer (never anything \
 from the CANNOT list); leave the list empty rather than inventing one.
 - Reply with JSON only: {{"text": "...", "insights": [{{"title": "...", "body": "...", \
-"kind": "info|good|warn|tip"}}], "follow_ups": [...]}}."""
+"kind": "info|good|warn|tip"}}], "follow_ups": [...], "closing": "...?"}}."""
 
 
 def _plan_schema(tool_names):
@@ -184,8 +192,9 @@ COMPOSE_SCHEMA = {
             "properties": {"kind": {"type": "string", "enum": ["clarify", "explore"]},
                            "label": {"type": "string"}, "prompt": {"type": "string"}},
             "required": ["label", "prompt"]}},
+        "closing": {"type": "string"},
     },
-    "required": ["lang", "text", "insights"],
+    "required": ["lang", "text", "insights", "closing"],
 }
 
 _EUR_AFTER = re.compile(
@@ -369,6 +378,11 @@ class Provider:
                                  "subtract or estimate." % ", ".join("%g" % x for x in bad[:6])})
                 out = self._chat_json(messages, COMPOSE_SCHEMA, "answer", 700)
             lang = out.get("lang")
+            if ctx.get("question_lang") in ("fi", "sv", "en"):
+                # the backend's guess of the question language wins over the model's label
+                # (Gemma 4 wrote Swedish but labelled it "en", so money and basket names
+                # were formatted in English)
+                lang = ctx["question_lang"]
             fmt = lambda s: format_dates(format_money(s, lang), lang)  # noqa: E731
             answer = {"text": fmt(str(out["text"])),
                       "insights": [{"title": fmt(str(i.get("title", ""))),
@@ -379,7 +393,8 @@ class Provider:
                       "follow_ups": [{"kind": f.get("kind"), "label": fmt(str(f.get("label", ""))),
                                       "prompt": fmt(str(f.get("prompt", "")))}
                                      for f in out.get("follow_ups", [])[:3]
-                                     if isinstance(f, dict)]}
+                                     if isinstance(f, dict)],
+                      "closing": fmt(str(out.get("closing") or ""))}
             if not answer["text"].strip():
                 raise LLMError("empty answer text")
             answer["lang"] = lang if lang in ("en", "fi", "sv") else "en"

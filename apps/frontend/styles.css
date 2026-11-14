@@ -77,6 +77,7 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: v
   margin: 0 auto; }
 .chip { flex: none; border: 1px solid var(--green); color: var(--green-dark); background: #fff;
   border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 14px; cursor: pointer; }
+.closing { margin: 12px 0 0; font-weight: 600; }
 .followups { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 .followups .chip { max-width: 100%; white-space: normal; text-align: left; }
 .followups .chip.clarify { border-color: var(--necessities); color: #8a4a12; }

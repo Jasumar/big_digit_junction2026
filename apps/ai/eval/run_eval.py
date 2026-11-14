@@ -15,6 +15,7 @@ Checks per case (all automatic, deliberately simple):
   money     euro format of the language: English "€1,234", Finnish/Swedish "1 234 €"
   notice    (optional per case) the answer carries / does not carry a "can't fully" notice
   must_any  (optional per case) at least one of the given strings appears
+  closing   the answer ends with a closing question in the case's language (T021)
 Warm the model first (GET <AI_BASE_URL>/health) or the first case hits a cold start.
 """
 import argparse
@@ -90,7 +91,7 @@ def run_case(case, store, provider, customer_id):
         checks["tool"] = bool(used) and used[0] in case["tools"]
     else:
         checks["tool"] = not used
-    lang = detect_lang(text)
+    lang = detect_lang(text + " " + (answer.get("closing") or ""))
     checks["lang"] = lang == case["lang"]
     known = result_numbers(captured.get("results", [])) + numbers_in(case["q"], case["lang"])
     known += result_numbers([store.as_of(customer_id), store.one(  # data dates are known
@@ -104,6 +105,8 @@ def run_case(case, store, provider, customer_id):
     checks["terms"] = not foreign
     bad_money = MONEY_WRONG[case["lang"]].findall(text)
     checks["money"] = not bad_money
+    close = answer.get("closing") or ""
+    checks["closing"] = close.strip().endswith("?") and detect_lang(close) in (case["lang"], "?")
     if "notice" in case:  # must admit it can only partly answer
         checks["notice"] = bool(answer.get("notice")) == case["notice"]
     if case.get("must_any"):  # must mention at least one of these
@@ -112,7 +115,7 @@ def run_case(case, store, provider, customer_id):
             "ungrounded_numbers": stray, "forbidden_found": hits, "foreign_terms": foreign,
             "bad_money": bad_money, "seconds": round(secs, 1),
             "checks": checks, "passed": all(checks.values()),
-            "text": answer["text"], "insights": answer["insights"]}
+            "text": answer["text"], "insights": answer["insights"], "closing": close}
 
 
 def main():
@@ -153,6 +156,8 @@ def main():
         for k in ("notice", "must_any"):
             if k in r["checks"] and not r["checks"][k]:
                 notes.append("%s=FAIL" % k)
+        if not r["checks"]["closing"]:
+            notes.append("closing=%r" % r["closing"][:60])
         mark = lambda ok: "ok" if ok else "FAIL"  # noqa: E731
         print("%-20s %-5s %-5s %-6s %-8s %-5s %-5s %6.1f  %s" % (
             r["id"], mark(r["checks"]["tool"]), mark(r["checks"]["lang"]),

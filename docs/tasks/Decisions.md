@@ -88,6 +88,8 @@ by raising it; the "Where" column says what to touch.
 
 | 65 | **Container deploy for Aiven Runtime** (T018): root `Dockerfile` (python:3.12-slim, no installs) builds the full database into the image at build time (`DATA=fixture` build arg for the sample), runs as non-root on port 8080; `HOST` env (default 127.0.0.1, image sets 0.0.0.0). AI stays on the existing Modal/OpenRouter API. | Aiven Runtime builds from a Dockerfile in the repo and is meant for stateless apps; the data is read-only, so baking it in needs no database service. | `Dockerfile`, `.dockerignore`, `server.py`, `.env.example`, `README.md` |
 
+| 70 | **Every answer ends with a closing question** (team request, T021): a separate `ANSWER.closing` field shown last in the bubble; the model proposes a specific one, the backend validates it (single short question, answer language, no unbacked numbers or merchant ids, passes the scope check) or uses a general one ("Haluatko tietää vielä jotain muuta rahoistasi?"); a question at the end of the text is moved there. Numbered 70 because T020 proposed #66–69. | Keeps the chat a conversation; a separate field keeps it after the charts and lets code guarantee it. | `closing.py`, `orchestrator.py`, `llm_provider.py`, `contracts/schemas.py`, `apps/frontend/app.js` |
+
 ## Known limits
 
 - Stub understands English keywords only; Finnish questions and anything outside its

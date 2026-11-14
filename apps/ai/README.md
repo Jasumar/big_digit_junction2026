@@ -186,6 +186,17 @@ this year → this month) and invented numbers when no tool ran. Now:
   text, the model can no longer filter by them, and payments without a shop are labelled
   "bills and transfers" instead of "(no merchant)".
 
+### Closing question
+
+Every answer ends with one short question that keeps the conversation going
+(`ANSWER.closing`, T021). Gemma proposes it in the `closing` field: preferably specific
+(what would change the numbers, or one next look the tools can do), otherwise "Is there
+anything else you'd like to know?". The backend (`apps/bank-backend/closing.py`) keeps it
+only if it is a short single question in the answer's language with no invented numbers,
+no merchant ids and nothing the scope check refuses; otherwise it uses one of three
+general questions per language. A question at the end of the answer text is moved into
+`closing`, so the coach never asks twice. The evaluation checks every answer has one.
+
 ### Follow-up questions
 
 Answers carry 0–3 tappable follow-up questions (`ANSWER.follow_ups`; design by
