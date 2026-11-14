@@ -86,6 +86,8 @@ by raising it; the "Where" column says what to touch.
 
 | 64 | **No data about other customers, in any form** (team decision, T017): the `peer_benchmark` table, `store.peer` and the `peer_comparison` tool are gone; `spender_profile` has no peer fields; savings ideas compare with the customer's own monthly average over the 12 months before the period. Questions comparing with others ("muihin ikäisiini", "average customer") get a scope limitation and are answered with the customer's own history; the prompt forbids quoting outside figures. | Strict banking-sector governance (banking secrecy): even age-band medians are derived from other customers' data. | `seed.py`, `store.py`, `calculation/tools.py`, `present.py`, `scope.py`, `followups.py`, `llm_provider.py`, `stub_provider.py` |
 
+| 65 | **Container deploy for Aiven Runtime** (T018): root `Dockerfile` (python:3.12-slim, no installs) builds the full database into the image at build time (`DATA=fixture` build arg for the sample), runs as non-root on port 8080; `HOST` env (default 127.0.0.1, image sets 0.0.0.0). AI stays on the existing Modal/OpenRouter API. | Aiven Runtime builds from a Dockerfile in the repo and is meant for stateless apps; the data is read-only, so baking it in needs no database service. | `Dockerfile`, `.dockerignore`, `server.py`, `.env.example`, `README.md` |
+
 ## Known limits
 
 - Stub understands English keywords only; Finnish questions and anything outside its
