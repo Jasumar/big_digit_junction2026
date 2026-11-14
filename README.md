@@ -48,8 +48,26 @@ python3 packages/cloud/seed.py --full  # ~70 s, ~500 MB database, gitignored
 The raw data is too big for git (GitHub's limit is 100 MB per file), so every clone
 fetches it once with the commands above.
 
-Env: `PORT`, `AI_PROVIDER` (only `stub` so far), `SPANKKI_DB`, `REQUIRE_FULL_DATA` — see
-`.env.example`. On the sample data the server prints a warning and the UI shows a
+### With the real AI (Gemma 3 27B on Modal)
+
+The model runs on our Modal deployment; you only need its URL and key, not a Modal or
+Hugging Face account.
+
+1. `cp .env.example .env`, then set `AI_PROVIDER=modal`, `AI_BASE_URL` (the deployment
+   URL) and `AI_API_KEY`. **Ask the deploy owner for the key in a private message or
+   password manager — never in git, issues or shared channels.**
+2. Start with the env loaded:
+   ```bash
+   set -a; . ./.env; set +a; python3 apps/bank-backend/server.py
+   ```
+3. The first question after ~10 idle minutes waits for a cold start (~4 min); later
+   answers take ~10 s. Every question bills GPU time to the deploy owner's Modal account.
+
+Without the key the app still works on the offline, English-only stub. Deploying or
+changing the model: `apps/ai/README.md` §Modal.
+
+Env: `PORT`, `AI_PROVIDER` (`stub` or `modal`), `AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL`,
+`AI_TIMEOUT`, `SPANKKI_DB`, `REQUIRE_FULL_DATA` — see `.env.example`. On the sample data the server prints a warning and the UI shows a
 banner; for the demo start it with `REQUIRE_FULL_DATA=1` so it refuses to run without the
 full dataset. `GET /api/health` reports which data is loaded.
 

@@ -52,6 +52,7 @@ Index of `docs/tasks/`. Keep it short; one owner per task.
 | [T005](tasks/T005-local-ai-spike.md) | `TODO` | ai | T001 | review |
 | [T006](tasks/T006-frontend-client-skeleton.md) | `TODO` | frontend, client | T002 | review |
 | [T007](tasks/T007-walking-skeleton.md) | `TODO` | all | T003–T006 | review |
+| [T008](tasks/T008-local-ai-modal.md) | `TODO` | ai | T007 | review |
 
 Order: T001 first (everyone, short). Then T002. Then T003, T004, T005, T006 in
 parallel — one person each. T007 joins them into M1. All seven were built together in
@@ -59,7 +60,8 @@ the MVP on branch `task/t000-first-mvp` and await review.
 
 **Next up** (no task files yet; create one before starting):
 
-1. Wire a real AI provider (`apps/ai/README.md` §Setup) — the biggest gap.
+1. Gemma on Modal works end to end, incl. the browser UI (T008). Left: tidy Finnish
+   wording (English archetype labels, "asuntolaina" for housing, € placement in English).
 2. Safe-to-save tool.
 3. MCC filter in `explore_transactions` (taxis, pharmacies…).
 4. Open-data benchmarks from Statistics Finland.
@@ -75,7 +77,7 @@ the MVP on branch `task/t000-first-mvp` and await review.
 | 1 | ~~Exact challenge brief and judging criteria?~~ Answered: `CHALLENGE.md` | — | done |
 | 2 | ~~Stack and transport per app?~~ Answered by the MVP: Python stdlib backend, plain JS UI, HTTP between them, in-process AI and calculation (`tasks/Decisions.md` #1–4) | — | done |
 | 3 | ~~Is `apps/client/` a real layer?~~ Answered: a thin JS module, not a process (#3) | — | done |
-| 4 | Which AI API provider and model for the challenge? (Answered in part: an API for the challenge; S-Bank may self-host in production.) | `TODO` | next |
+| 4 | ~~Which AI provider and model for the challenge?~~ Answered: Gemma 3 27B on Modal (vLLM, H100), OpenAI-compatible API with a key (T008) | — | done |
 | 5 | ~~What is "cloud" for the demo?~~ Answered: the data platform holding all client data (e.g. BigQuery, Azure, AWS); here, the S-pankki mock data. Local SQLite stands in. | — | done |
 | 6 | ~~Who asks for a calculation, and what does "approved" check?~~ Answered: the model asks; the backend checks the catalog, the schema and that no customer id is supplied (#13) | — | done |
 | 7 | ~~Which calculations does the demo need?~~ Answered for the MVP: seven tools (`apps/bank-backend/calculation/README.md`) | — | done |
@@ -97,6 +99,7 @@ Append-only. One line per decision others must not silently reverse.
 | 2026-11-13 | Keep the local SQLite stand-in for the cloud for now; hosted platform later | demo works offline, no accounts | team |
 | 2026-11-14 | Challenge uses a hosted AI API; S-Bank may self-host in production, so the provider stays behind `apps/ai/provider.py` | speed for the challenge, swappable later | team |
 | 2026-11-14 | One model answers in the user's language (Finnish/Swedish/English); no translation model; fixed UI text via string files, numbers formatted by code | simpler, faster, keeps tone; numbers stay exact | team |
+| 2026-11-14 | AI for the challenge: Gemma 3 27B on Modal (vLLM, one H100), API-key protected; falls back to the stub if unreachable | open model we host ourselves, close to S-Bank self-hosting; team chose 27B | team |
 | 2026-11-13 | The AI model never reads client data; it only sees results of backend-approved calculations | privacy, the core of the pitch | team |
 
 ## Risks
@@ -108,8 +111,11 @@ Append-only. One line per decision others must not silently reverse.
 - No real S-pankki data → mock data in `packages/cloud/` from day one.
 - Demo laptop lacks the full database and silently runs on the 6-customer sample →
   start with `REQUIRE_FULL_DATA=1`; the UI also shows a banner on sample data.
-- A real AI provider adds seconds per answer and can be down → keep `AI_PROVIDER=stub`
-  as the offline fallback; the database is not the bottleneck (<5 ms per tool).
+- Gemma on Modal adds seconds per answer, cold starts take minutes, and it can be down →
+  the provider falls back to the stub per call; warm it with `COACH_MIN_CONTAINERS=1`
+  before the demo; the database is not the bottleneck (<5 ms per tool).
+- GPU cost: an H100 bills while running → scale-to-zero after 10 min by default; only
+  keep one warm during the demo.
 - The stub only understands English keywords; Finnish questions get the help text →
   wire the real provider before showing Finnish.
 
