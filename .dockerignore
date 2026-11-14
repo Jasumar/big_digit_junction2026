@@ -1,0 +1,14 @@
+# Keep the build context small and free of secrets and local data.
+.git
+.github
+.worktrees
+.claude
+.env
+.env.*
+preferences.md
+visualizations
+docs
+**/__pycache__
+**/*.pyc
+# local database and raw CSVs; the image builds its own
+packages/cloud/data

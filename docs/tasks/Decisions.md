@@ -80,6 +80,8 @@ by raising it; the "Where" column says what to touch.
 
 | 61 | **No warning boxes in the UI** (team decision): `answer.notice` is not rendered; the limitation still reaches the model, so the answer text states it once. The field stays in the API (evaluation `notice` check, tests). | The box repeated the first sentence of the answer. | `apps/frontend/app.js`, `styles.css` |
 
+| 62 | **Container deploy for Aiven Runtime:** root `Dockerfile` (python:3.12-slim, no installs) builds the full database into the image at build time (`DATA=fixture` build arg for the sample), runs as non-root on port 8080; `HOST` env (default 127.0.0.1, image sets 0.0.0.0). AI stays on the existing Modal/OpenRouter API. | Aiven Runtime builds from a Dockerfile in the repo and is meant for stateless apps; the data is read-only, so baking it in needs no database service. | `Dockerfile`, `.dockerignore`, `server.py`, `.env.example`, `README.md` |
+
 ## Known limits
 
 - Stub understands English keywords only; Finnish questions and anything outside its

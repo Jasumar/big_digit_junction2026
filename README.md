@@ -83,12 +83,43 @@ owner's OpenRouter account.
 Without a key the server refuses to start and says where the key goes. Either way the app
 still works on the offline, English-only stub.
 
-Env: `PORT`, `AI_PROVIDER` (`stub` | `modal` | `openrouter`), `AI_BASE_URL`, `AI_API_KEY`,
+Env: `PORT`, `HOST`, `AI_PROVIDER` (`stub` | `modal` | `openrouter`), `AI_BASE_URL`, `AI_API_KEY`,
 `AI_MODEL`, `AI_TIMEOUT`, `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, `SPANKKI_DB`,
 `REQUIRE_FULL_DATA` — see `.env.example`. On the sample data the server prints a warning
 and the UI shows a
 banner; for the demo start it with `REQUIRE_FULL_DATA=1` so it refuses to run without the
 full dataset. `GET /api/health` reports which data is loaded.
+
+## Deploy (Docker, Aiven Runtime)
+
+The root `Dockerfile` builds one container that serves the API and the UI on port 8080.
+The image contains the full database (it downloads the CSVs and seeds during the build);
+the AI stays on an existing API (Modal or OpenRouter), so the container needs no GPU.
+
+```bash
+docker build -t spankki-coach .                           # full data, ~0.5 GB database
+docker build -t spankki-coach --build-arg DATA=fixture .  # 6-customer sample, fast
+docker run --rm -p 8080:8080 --env-file .env spankki-coach   # http://localhost:8080
+```
+
+Do not set `HOST` or `PORT` in the `.env` you pass to the container; the image sets
+`HOST=0.0.0.0` and `PORT=8080`.
+
+**Aiven Runtime** (https://aiven.io/docs/products/runtime) builds from this GitHub repo:
+
+1. Connect the GitHub account to the Aiven organization (organization admin).
+2. Create an application service: select the repository and branch `main`; Aiven finds
+   `Dockerfile` at the root and reads port 8080 from `EXPOSE`. CLI equivalent:
+   `-c application.source.build_path=. -c application.source.containerfile_path=Dockerfile`
+   `-c 'application.ports=[{"name":"http","port":8080,"protocol":"HTTP"}]'`.
+3. Environment variables: `AI_PROVIDER` (`modal` or `openrouter`) and its settings; store
+   `AI_API_KEY` / `OPENROUTER_API_KEY` as **secrets**, never in the repo. Add
+   `REQUIRE_FULL_DATA=1` so a sample-data image refuses to start.
+4. Aiven gives an HTTPS URL and forwards it to port 8080. Check `GET /api/health`.
+5. A push does not redeploy; use "Actions > Deploy latest commit".
+
+The app has no login (Decisions #16): anyone with the URL can query the demo customers
+and spend the AI key's budget.
 
 ## Start
 
