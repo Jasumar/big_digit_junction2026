@@ -20,7 +20,6 @@ T = {
     "By category": {"fi": "Kategorioittain", "sv": "Per kategori"},
     "Type": {"fi": "Tyyppi", "sv": "Typ"},
     "Monthly spend": {"fi": "Kulutus kuukaudessa", "sv": "Utgifter per månad"},
-    "peers %s": {"fi": "ikätoverit %s", "sv": "jämnåriga %s"},
     "Kept of income": {"fi": "Tuloista jäi", "sv": "Kvar av inkomsten"},
     "Weekend share": {"fi": "Viikonloppujen osuus", "sv": "Andel på helger"},
     # life signals (calculation/signals.py); Finnish/Swedish wording is a draft (Q11)
@@ -39,9 +38,8 @@ T = {
     "Invests regularly": {"fi": "Sijoittaa säännöllisesti", "sv": "Investerar regelbundet"},
     "Has a regular monthly salary": {"fi": "Saa säännöllistä kuukausipalkkaa",
                                      "sv": "Har regelbunden månadslön"},
-    "Monthly spend vs peers (median)": {"fi": "Kuukausikulutus vs. ikätoverit (mediaani)",
-                                        "sv": "Utgifter per månad vs. jämnåriga (median)"},
-    "peers": {"fi": "ikätoverit", "sv": "jämnåriga"},
+    "Monthly spend by basket": {"fi": "Kuukausikulutus menokoreittain",
+                                "sv": "Utgifter per månad per korg"},
     "Balance now": {"fi": "Saldo nyt", "sv": "Saldo nu"},
     "Income expected": {"fi": "Odotetut tulot", "sv": "Väntade inkomster"},
     "Housing payment": {"fi": "Asumismaksu", "sv": "Boendekostnad"},
@@ -59,11 +57,8 @@ T = {
     "Where to start": {"fi": "Mistä aloittaa", "sv": "Var du kan börja"},
     "Category": {"fi": "Kategoria", "sv": "Kategori"},
     "You": {"fi": "Sinä", "sv": "Du"},
-    "Peers": {"fi": "Ikätoverit", "sv": "Jämnåriga"},
+    "Usual": {"fi": "Tavallisesti", "sv": "Vanligtvis"},
     "Save": {"fi": "Säästö", "sv": "Spara"},
-    "Monthly: you vs median of customers aged %s": {
-        "fi": "Kuukaudessa: sinä vs. %s-vuotiaiden mediaani",
-        "sv": "Per månad: du vs. median för %s år"},
     "Per month": {"fi": "Kuukaudessa", "sv": "Per månad"},
     "Extra per month": {"fi": "Lisää kuukaudessa", "sv": "Extra per månad"},
     "Per year": {"fi": "Vuodessa", "sv": "Per år"},
@@ -166,21 +161,15 @@ def _spending_breakdown(d, f):
 def _spender_profile(d, f):
     archetype = glossary.archetype(d.get("archetype_key"), f.lang, d["archetype"])
     items = [{"label": f.t("Type"), "value": archetype},
-             {"label": f.t("Monthly spend"), "value": f.eur(d["monthly_spend"]),
-              "sub": f.t("peers %s") % f.eur(d["peer_monthly_spend_median"])
-              if d["peer_monthly_spend_median"] else ""}]
+             {"label": f.t("Monthly spend"), "value": f.eur(d["monthly_spend"])}]
     if d["savings_rate_pct"] is not None:
         items.append({"label": f.t("Kept of income"), "value": f.pct(d["savings_rate_pct"])})
     items.append({"label": f.t("Weekend share"), "value": f.pct(d["weekend_share_pct"])})
-    peers = d["peer_bucket_median_monthly"]
     mine = d["monthly_by_bucket"]
     out = [{"type": "stats", "items": items},
-           {"type": "bars", "title": f.t("Monthly spend vs peers (median)"),
-            "items": [it for b in ("essentials", "necessities", "everyday") for it in (
-                {"label": f.bucket(b), "value": mine[b], "display": f.eur(mine[b]),
-                 "tone": b},
-                {"label": "  " + f.t("peers"), "value": peers[b] or 0,
-                 "display": f.eur(peers[b] or 0), "tone": "peer"})]}]
+           {"type": "bars", "title": f.t("Monthly spend by basket"),
+            "items": [{"label": f.bucket(b), "value": mine[b], "display": f.eur(mine[b]),
+                       "tone": b} for b in ("essentials", "necessities", "everyday")]}]
     rows = [[f.t(s["label"]), _signal_evidence(s["evidence"], f)] for s in d.get("signals", [])]
     if rows:
         out.append({"type": "table", "title": f.t("What your spending suggests"),
@@ -223,21 +212,10 @@ def _savings_opportunities(d, f):
          "value": f.t("%s/mo") % f.eur(d["total_monthly_potential"]), "tone": "good",
          "sub": f.t("%s a year") % f.eur(d["yearly_potential"])}]},
         {"type": "table", "title": f.t("Where to start"),
-         "columns": [f.t("Category"), f.t("You"), f.t("Peers"), f.t("Save")],
+         "columns": [f.t("Category"), f.t("You"), f.t("Usual"), f.t("Save")],
          "rows": [[f.cat(i["category"]), f.eur(i["monthly"]),
-                   f.eur(i["peer_median"]) if i["peer_median"] is not None else "-",
+                   f.eur(i["usual_monthly"]) if i["usual_monthly"] is not None else "-",
                    f.eur(i["potential_monthly"])] for i in d["ideas"]]}]
-
-
-def _peer_comparison(d, f):
-    return [{"type": "bars",
-             "title": f.t("Monthly: you vs median of customers aged %s")
-             % d["peer_group"]["age_band"],
-             "items": [it for c in d["categories"] for it in (
-                 {"label": f.cat(c["category"]), "value": c["monthly"],
-                  "display": f.eur(c["monthly"]), "tone": c["bucket"]},
-                 {"label": "  " + f.t("peers"), "value": c["peer_median"] or 0,
-                  "display": f.eur(c["peer_median"] or 0), "tone": "peer"})]}]
 
 
 def _simulate_change(d, f):
@@ -254,7 +232,7 @@ def _simulate_change(d, f):
             {"type": "bars",
              "title": f.t("%s per month: now vs %s") % (tgt, f.pct(d["change_pct"], signed=True)),
              "items": [{"label": f.t("Now"), "value": d["baseline_monthly"],
-                        "display": f.eur(d["baseline_monthly"]), "tone": "peer"},
+                        "display": f.eur(d["baseline_monthly"]), "tone": "baseline"},
                        {"label": f.t("After"), "value": d["new_monthly"],
                         "display": f.eur(d["new_monthly"]),
                         "tone": "good" if saving >= 0 else "warn"}]}]

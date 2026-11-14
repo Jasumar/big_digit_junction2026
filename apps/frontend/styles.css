@@ -1,7 +1,7 @@
 :root {
   --green: #00ac4e; --green-dark: #00532d; --ink: #12313f; --muted: #667a85;
   --bg: #f3f6f4; --card: #fff; --line: #dfe7e3;
-  --essentials: #2f6fed; --necessities: #e8833a; --everyday: #00ac4e; --peer: #b9c4cb;
+  --essentials: #2f6fed; --necessities: #e8833a; --everyday: #00ac4e; --baseline: #b9c4cb;
   --good: #00ac4e; --warn: #e8833a; --bad: #d64545;
 }
 * { box-sizing: border-box; }

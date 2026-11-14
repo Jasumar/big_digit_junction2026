@@ -23,9 +23,6 @@ T = {
     "save": {"en": ("How could I save more?", "How could I save more?"),
              "fi": ("Miten voisin säästää enemmän?", "Miten voisin säästää enemmän?"),
              "sv": ("Hur kan jag spara mer?", "Hur kan jag spara mer?")},
-    "peers": {"en": ("Compare to others my age", "How do I compare to others my age?"),
-              "fi": ("Vertaa ikätovereihin", "Miten vertaudun muihin ikäisiini?"),
-              "sv": ("Jämför med jämnåriga", "Hur står jag mig jämfört med andra i min ålder?")},
     "cut": {"en": ("Cut {cat} by 20%?", "What if I cut {cat} by 20%?"),
             "fi": ("{Cat} −20 %?", "Mitä jos vähentäisin kategoriaa {Cat} 20 %?"),
             "sv": ("{Cat} −20 %?", "Vad händer om jag minskar {cat} med 20 %?")},
@@ -65,19 +62,13 @@ def fallback(results, lang):
                 out.append(_fu("cut", lang, cat=top["category"]))
             out.append(_fu("save", lang))
         elif tool == "spender_profile":
-            out += [_fu("save", lang), _fu("peers", lang)]
+            out += [_fu("save", lang), _fu("where", lang)]
         elif tool == "safe_to_spend":
             out.append(_fu("save", lang) if d["status"] in ("tight", "very_tight")
                        else _fu("where", lang))
         elif tool == "savings_opportunities":
             # where would they like to save? the top ideas as one-tap choices
             out += [_fu("cut", lang, "clarify", i["category"]) for i in d["ideas"][:2]]
-        elif tool == "peer_comparison":
-            above = [c for c in d["categories"] if (c.get("diff_vs_median") or 0) > 0
-                     and c["category"] not in ("Housing", "Utilities")]
-            if above:
-                top = max(above, key=lambda c: c["diff_vs_median"])
-                out.append(_fu("cut", lang, cat=top["category"]))
         elif tool in ("simulate_change", "explore_transactions"):
             out += [_fu("save", lang), _fu("safe", lang)]
     return out
