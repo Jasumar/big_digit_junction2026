@@ -40,7 +40,7 @@ buckets; `store.py` is the read-only access (open with `mode=ro`).
 
 Tables: `customers`, `transactions`, `peer_benchmark`, `meta`, `mortgage_applications`
 (one row per application, linked to `customer_id`), `mortgage_events` (application
-event history). The upstream column `lfinal_loan_to_value` is stored as
+event history), `mcc_codes` (Merchant Category Code reference: code → official names). The upstream column `lfinal_loan_to_value` is stored as
 `final_loan_to_value`.
 
 **Two data sets:**
@@ -73,7 +73,15 @@ What we learned from profiling the S-pankki CSVs (source:
   Deposit, Invest Withdraw are transfers. Bucket mapping: `taxonomy.py`.
 - **Merchants are synthetic ids** (`MRC-GRO-0035`); 45–90 per category, no names.
 - **MCC codes refine categories:** e.g. taxis are MCC 4121 (59k rows inside
-  Transportation). 75k Transportation rows have no MCC. No tool filters by MCC yet.
+  Transportation). 36 codes occur in the data; all are in the `mcc_codes` reference table
+  and mapped to a subcategory (`taxonomy.SUBCATEGORIES`, names in `glossary.py`). About 5%
+  of purchases have no MCC (75k Transportation rows, 12%), so subcategory totals are
+  minimums. Tools filter/group by subcategory since T014.
+- **MCC reference data:** `fixture/mcc_codes.csv` (981 codes) from
+  github.com/greggles/mcc-codes, Unlicense (public domain), downloaded 2026-11-14.
+  Reference data, not customer data: committed, and loaded for both the sample and the
+  full build (a copy in `--csv-dir` takes precedence). Rebuild older databases with
+  `seed.py --full` to get the table.
 - **Recurring patterns:** salary and housing roughly
   monthly, utilities several small payments a month — `safe_to_spend` predicts the next
   date from the median gap.

@@ -35,6 +35,40 @@ CATEGORIES = {  # long forms explain the category to the model; charts use SHORT
 SHORT = {"Housing": {"fi": "Asuminen", "sv": "Boende"},
          "Utilities": {"fi": "Asumisen laskut", "sv": "Boenderäkningar"}}
 
+# Subcategory names (keys in taxonomy.SUBCATEGORIES): (en, fi, sv)
+SUBCATEGORY_NAMES = {
+    "taxi": ("Taxis", "Taksit", "Taxi"),
+    "public_transport": ("Public transport", "Joukkoliikenne", "Kollektivtrafik"),
+    "fuel": ("Fuel", "Polttoaine", "Bränsle"),
+    "parking": ("Parking", "Pysäköinti", "Parkering"),
+    "restaurant": ("Restaurants", "Ravintolat", "Restauranger"),
+    "fast_food": ("Fast food", "Pikaruoka", "Snabbmat"),
+    "bar": ("Bars", "Baarit", "Barer"),
+    "supermarket": ("Supermarkets", "Ruokakaupat", "Livsmedelsbutiker"),
+    "convenience_store": ("Convenience stores", "Lähikaupat ja erikoisliikkeet", "Närbutiker"),
+    "meat_and_dairy": ("Meat and dairy shops", "Liha- ja maitokaupat", "Kött- och mejeributiker"),
+    "pharmacy": ("Pharmacies", "Apteekit", "Apotek"),
+    "doctor": ("Doctors and health services", "Lääkärit ja terveyspalvelut", "Läkare och vård"),
+    "dentist": ("Dentists", "Hammaslääkärit", "Tandläkare"),
+    "electronics": ("Electronics", "Elektroniikka", "Elektronik"),
+    "furniture": ("Furniture", "Huonekalut", "Möbler"),
+    "hardware_store": ("Hardware and home supply", "Rauta- ja kodintarvikkeet", "Järn- och hemvaror"),
+    "clothing": ("Clothing", "Vaatteet", "Kläder"),
+    "sporting_goods": ("Sporting goods", "Urheiluvälineet", "Sportartiklar"),
+    "books": ("Books", "Kirjat", "Böcker"),
+    "toys_and_hobbies": ("Toys and hobbies", "Lelut ja harrastukset", "Leksaker och hobby"),
+    "other_shops": ("Other shops", "Muut kaupat", "Övriga butiker"),
+    "cinema": ("Cinema", "Elokuvat", "Bio"),
+    "events_and_tickets": ("Events and tickets", "Tapahtumat ja liput", "Evenemang och biljetter"),
+    "attractions": ("Attractions and amusement parks", "Nähtävyydet ja huvipuistot", "Sevärdheter och nöjesparker"),
+    "recreation": ("Recreation", "Vapaa-aika", "Fritid"),
+    "flights": ("Flights", "Lennot", "Flyg"),
+    "hotels": ("Hotels", "Hotellit", "Hotell"),
+    "car_rental": ("Car rental", "Autonvuokraus", "Biluthyrning"),
+    "travel_agency": ("Travel agencies", "Matkatoimistot", "Resebyråer"),
+    "unknown": ("No merchant code", "Ei kauppakoodia", "Ingen butikskod"),
+}
+
 ARCHETYPES = {
     "squeezed": {"en": "Squeezed by essentials", "fi": "Pakollisten menojen puristuksessa",
                  "sv": "Pressad av nödvändiga utgifter"},
@@ -53,6 +87,9 @@ def prompt_table():
     lines += ["- %s: %s | %s | %s" % (k, v["en"], v["fi"], v["sv"]) for k, v in BUCKETS.items()]
     lines.append("Categories (data name: Finnish | Swedish):")
     lines += ["- %s: %s | %s" % (k, v["fi"], v["sv"]) for k, v in CATEGORIES.items()]
+    lines.append("Subcategories (key: English | Finnish | Swedish):")
+    lines += ["- %s: %s | %s | %s" % ((k,) + v) for k, v in SUBCATEGORY_NAMES.items()
+              if k != "unknown"]
     lines.append("Spender types (archetype_key: English | Finnish | Swedish):")
     lines += ["- %s: %s | %s | %s" % (k, v["en"], v["fi"], v["sv"])
               for k, v in ARCHETYPES.items()]
@@ -77,3 +114,10 @@ def bucket(key, lang):
 
 def archetype(key, lang, fallback=""):
     return ARCHETYPES.get(key, {}).get(lang if lang in ("fi", "sv", "en") else "en", fallback)
+
+
+def subcategory(key, lang):
+    names = SUBCATEGORY_NAMES.get(key)
+    if not names:
+        return key
+    return names[{"en": 0, "fi": 1, "sv": 2}.get(lang, 0)]

@@ -361,6 +361,20 @@
     "539"
    ],
    "notice": false
+  },
+  {
+   "id": "fi-taxi-sub",
+   "lang": "fi",
+   "q": "Paljonko olen käyttänyt takseihin viimeisen vuoden aikana?",
+   "tools": [
+    "explore_transactions"
+   ],
+   "must_not": [
+    "En voi eritellä",
+    "sisältää kaikki",
+    "kauppakoodi"
+   ],
+   "notice": false
   }
  ]
 }

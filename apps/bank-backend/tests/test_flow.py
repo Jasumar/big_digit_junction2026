@@ -534,6 +534,100 @@ class TestFollowUps(Base):
                 self.assertNotIn("Asuminen", f["prompt"])
 
 
+class TestMccCodes(Base):
+    """T014: MCC reference table, subcategories, and consistency with T011 life signals."""
+
+    def test_reference_table_loaded(self):
+        self.assertGreater(self.store.info()["mcc_codes"], 900)
+        self.assertEqual(self.store.mcc_names(["4121"]), {"4121": "Taxicabs and Limousines"})
+
+    def test_every_data_mcc_has_subcategory_names_and_reference(self):
+        from cloud import glossary
+        from cloud.taxonomy import MCC_SUBCATEGORY, SUBCATEGORIES
+        data = {r["mcc"] for r in self.store.rows(
+            "SELECT DISTINCT mcc FROM transactions WHERE mcc IS NOT NULL")}
+        self.assertTrue(data)
+        self.assertEqual(data - set(MCC_SUBCATEGORY), set())   # fixture codes mapped
+        all_codes = set(MCC_SUBCATEGORY)
+        self.assertEqual(all_codes - set(self.store.mcc_names(all_codes)), set())
+        for key in SUBCATEGORIES:
+            self.assertIn(key, glossary.SUBCATEGORY_NAMES)
+        for key, (cat, _) in SUBCATEGORIES.items():
+            self.assertIn(cat, glossary.CATEGORIES)
+
+    def test_consistent_with_t011_life_signals(self):
+        from calculation import signals
+        from cloud.taxonomy import MCC_SUBCATEGORY, SUBCATEGORIES
+        self.assertEqual(set(signals.MCC_NAMES), set(MCC_SUBCATEGORY))
+        rule_codes = {c for _, _, codes, _ in signals.MCC_RULES for c in codes}
+        self.assertEqual(rule_codes - set(self.store.mcc_names(rule_codes)), set())
+        taxis = next(codes for k, _, codes, _ in signals.MCC_RULES if k == "taxis")
+        self.assertEqual(set(taxis), set(SUBCATEGORIES["taxi"][1]))
+        public = next(codes for k, _, codes, _ in signals.MCC_RULES if k == "public_transport")
+        self.assertEqual(set(public), set(SUBCATEGORIES["public_transport"][1]))
+
+    def test_subcategory_filter_and_grouping(self):
+        taxi = tools.run("explore_transactions", self.store, CID,
+                         {"period": "all", "subcategory": "taxi", "group_by": "none"})
+        sql = self.store.one("SELECT COALESCE(-SUM(amount),0) AS v, COUNT(*) AS n FROM "
+                             "transactions WHERE customer_id = ? AND mcc = '4121'", (CID,))
+        self.assertAlmostEqual(taxi["total"], round(sql["v"], 2), 1)
+        self.assertEqual(taxi["count"], sql["n"])
+        self.assertIn("do not claim they include all", taxi["notes"])
+        self.assertEqual(taxi["mcc_names"], {"4121": "Taxicabs and Limousines"})
+        split = tools.run("explore_transactions", self.store, CID,
+                          {"period": "all", "category": "Transportation",
+                           "group_by": "subcategory", "limit": 36})
+        whole = tools.run("explore_transactions", self.store, CID,
+                          {"period": "all", "category": "Transportation", "group_by": "none"})
+        self.assertAlmostEqual(sum(g["value"] for g in split["groups"]), whole["total"], 1)
+        keys = {g["key"] for g in split["groups"]}
+        self.assertTrue(keys <= {"taxi", "public_transport", "fuel", "parking", "unknown"})
+
+    def test_subcategory_charts_localized(self):
+        import present
+        d = tools.run("explore_transactions", self.store, CID,
+                      {"period": "all", "category": "Transportation", "group_by": "subcategory"})
+        fi = json.dumps(present.build([{"tool": "explore_transactions", "ok": True,
+                                        "data": d}], "fi"), ensure_ascii=False)
+        self.assertIn("Joukkoliikenne", fi)
+        self.assertIn("alaluokka", fi)
+
+    def test_scope_taxi_answerable_coffee_not(self):
+        import scope
+        self.assertEqual(scope.limitation("Paljonko käytin takseihin viime kuussa?", "fi",
+                                          "2026-09-30"), "")
+        self.assertEqual(scope.limitation("How much do I spend on fuel?", "en",
+                                          "2026-09-30"), "")
+        self.assertTrue(scope.limitation("Paljonko käytän kahviin?", "fi", "2026-09-30"))
+
+    def test_subcategory_answers_have_no_merchant_code_notice(self):
+        class Taxi:
+            name = "taxi"
+            def plan(self, text, tools, history=None, context=None):
+                return {"requests": [{"tool": "explore_transactions",
+                                      "args": {"subcategory": "taxi", "group_by": "none"}}],
+                        "lang": "fi"}
+            def compose(self, text, results, history=None, context=None):
+                return {"text": "Selvä.", "insights": [], "lang": "fi"}
+        a = orchestrator.handle_command({"customer_id": CID, "text": "Taksit?", "lang": "fi"},
+                                        self.store, Taxi())
+        self.assertNotIn("notice", a)  # team decision: no merchant-code warning to users
+        self.assertNotIn("kauppakoodi", a["text"])
+
+    def test_seed_falls_back_to_fixture_mcc_file(self):
+        import shutil
+        tmp = tempfile.mkdtemp()
+        try:
+            for f in seed.ALL_CSVS:  # customer data without an mcc_codes.csv beside it
+                shutil.copy(os.path.join(seed.FIXTURE_DIR, f), tmp)
+            db = os.path.join(tmp, "x.sqlite")
+            seed.build(tmp, db)
+            self.assertGreater(Store(db).info()["mcc_codes"], 900)
+        finally:
+            shutil.rmtree(tmp)
+
+
 class TestFlow(Base):
     def test_brief_questions(self):
         for q, tool in (("Where did my money go?", "spending_breakdown"),

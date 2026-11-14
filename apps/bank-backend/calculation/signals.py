@@ -208,8 +208,17 @@ def report(store, period="last_90_days", out=sys.stdout):
     print("signals per customer: %s" % ", ".join("%d: %d" % kv for kv in dist.items()), file=out)
     print("time per customer: p50 %.2f ms, p95 %.2f ms" % (pick(0.5), pick(0.95)), file=out)
     print("unknown MCCs: %s" % (", ".join(sorted(unknown)) or "none"), file=out)
+    # T014: every code must also exist in the mcc_codes reference table
+    data_codes = {r["mcc"] for r in store.rows(
+        "SELECT DISTINCT mcc FROM transactions WHERE mcc IS NOT NULL")}
+    reference = store.mcc_names(data_codes)
+    not_in_reference = sorted(data_codes - set(reference)) if reference else []
+    print("MCCs missing from the reference table: %s"
+          % (", ".join(not_in_reference) or ("none" if reference else "table not loaded")),
+          file=out)
     return {"shares": {k: have[k] / n for k in keys}, "flagged": flagged,
-            "p95_ms": pick(0.95), "unknown_mcc": unknown}
+            "p95_ms": pick(0.95), "unknown_mcc": unknown,
+            "not_in_reference": not_in_reference}
 
 
 def _main(argv=None):

@@ -43,3 +43,9 @@ visual type, add it in `bank-backend/present.py` and in `renderVisual`.
 `renderAnswer` shows `answer.follow_ups` as buttons under the answer ("clarify" ones in
 orange). Tapping sends the button's `prompt` as the next question (with the current UI
 language) and disables the row. Labels come from the backend in the answer's language.
+
+## Notices
+
+`answer.notice` (what the tools could not cover, e.g. "no merchant code for coffee") is
+**not rendered** — the answer text already states it, because the backend passes the
+limitation to the model. The field stays in the API for tests and the evaluation.

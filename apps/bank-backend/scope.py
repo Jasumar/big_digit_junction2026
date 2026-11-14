@@ -29,8 +29,9 @@ RULES = [  # (key, regex on lower-cased question)
     ("shop", r"prisma|s-market|k-market|citymarket|lidl|alepa|\bsale\b|tokmanni|ikea|"
              r"gigantti|verkkokauppa|\balko\b|hesburger|mcdonald|starbucks|wolt|foodora|"
              r"\buber\b|\bbolt\b|netflix|spotify|amazon|zalando|\bica\b|\bcoop\b"),
-    ("sub", r"kahvi|kaffe|coffee|taksi|taxi|bensa|polttoaine|fuel|petrol|apteek|pharmac|"
-            r"apotek|alkoholi|alcohol|tupak|tobacco"),
+    # taxis, fuel, pharmacies etc. are answerable since T014 (merchant category codes);
+    # coffee and tobacco have no code of their own
+    ("sub", r"kahvi|kaffe|coffee|tupak|tobacco|tobak"),
     ("subscr", r"tilau|subscript|prenumer|kuukausimaksu|kestotilaus"),
     ("list", r"viimeiset \d|viimeisimmät|last \d+ (purchase|transaction|payment)|"
              r"senaste \d|näytä (kaikki )?(ostok|tapahtum)|list (my|all)|show (my|all) "
@@ -58,9 +59,9 @@ TEXT = {
     "shop": {"fi": "Tiedoissa ei ole kauppojen nimiä, joten en voi näyttää kulutusta tiettyyn kauppaan.",
              "sv": "Datan har inga butiksnamn, så jag kan inte visa utgifter i en viss butik.",
              "en": "The data has no shop names, so I can't show spending at a specific shop."},
-    "sub": {"fi": "En voi eritellä alaluokkia (esim. kahvi tai taksi); näytän koko kategorian.",
-            "sv": "Jag kan inte dela upp underkategorier (t.ex. kaffe eller taxi); jag visar hela kategorin.",
-            "en": "I can't split subcategories (like coffee or taxi); I'm showing the whole category."},
+    "sub": {"fi": "Kahville tai tupakalle ei ole omaa kauppakoodia; näytän lähimmän luokan (esim. ravintolat ja kahvilat).",
+            "sv": "Kaffe och tobak har ingen egen butikskod; jag visar närmaste kategori (t.ex. restauranger och kaféer).",
+            "en": "Coffee and tobacco have no merchant code of their own; I'm showing the closest category (e.g. restaurants and cafés)."},
     "subscr": {"fi": "En pysty tunnistamaan tilauksia tiedoista.",
                "sv": "Jag kan inte känna igen prenumerationer i datan.",
                "en": "I can't identify subscriptions in the data."},

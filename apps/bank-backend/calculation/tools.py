@@ -8,6 +8,7 @@ whitelists below, never from arguments.
 import datetime as dt
 import statistics
 
+from cloud.taxonomy import MCC_SUBCATEGORY, SUBCATEGORIES
 from cloud.taxonomy import (
     BUCKET_LABELS, CATEGORY_BUCKET, EVERYDAY, ESSENTIALS, INCOME_CATEGORIES, NECESSITIES,
     SPEND_CATEGORIES, TRANSFER_CATEGORIES,
@@ -398,15 +399,28 @@ _WEEKDAY = ("CASE weekday WHEN 0 THEN 'Mon' WHEN 1 THEN 'Tue' WHEN 2 THEN 'Wed'"
             " WHEN 3 THEN 'Thu' WHEN 4 THEN 'Fri' WHEN 5 THEN 'Sat' ELSE 'Sun' END")
 _BUCKET_CASE = "CASE category %s ELSE 'other' END" % " ".join(
     "WHEN '%s' THEN '%s'" % (k, v) for k, v in CATEGORY_BUCKET.items())
+_SUBCAT_CASE = "CASE %s ELSE 'unknown' END" % " ".join(  # constants, not input
+    "WHEN mcc = '%s' THEN '%s'" % (m, k) for m, k in sorted(MCC_SUBCATEGORY.items()))
 _GROUP_EXPR = {
     "none": "'total'", "category": "category",
     "merchant": "COALESCE(merchant_id,'(bills and transfers)')",
     "month": "substr(tx_date,1,7)", "day": "tx_date", "weekday": _WEEKDAY,
-    "hour_band": _HOUR_BAND, "bucket": _BUCKET_CASE,
+    "hour_band": _HOUR_BAND, "bucket": _BUCKET_CASE, "subcategory": _SUBCAT_CASE,
 }
 _CHRONO = ("month", "day")
 _HOUR_RANGE = {"night": None, "morning": (6, 11), "afternoon": (12, 17), "evening": (18, 21)}
 WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+
+
+def _mcc_names(store, args, group_by, rows):
+    """Official names (mcc_codes reference table) for the codes behind a subcategory answer."""
+    codes = set()
+    if args.get("subcategory"):
+        codes |= set(SUBCATEGORIES[args["subcategory"]][1])
+    if group_by == "subcategory":
+        for r in rows:
+            codes |= set(SUBCATEGORIES.get(r["key"], ("", ()))[1])
+    return store.mcc_names(codes) if codes else {}
 
 
 def explore_transactions(store, customer_id, args):
@@ -445,6 +459,10 @@ def explore_transactions(store, customer_id, args):
         where.append("weekday >= 5")
     elif args.get("day_type") == "weekday":
         where.append("weekday < 5")
+    if args.get("subcategory"):
+        cat, codes = SUBCATEGORIES[args["subcategory"]]
+        where.append("mcc IN (%s)" % ",".join("?" * len(codes)))
+        params += list(codes)
     if args.get("weekday"):
         where.append("weekday = ?")
         params.append(WEEKDAYS.index(args["weekday"]))
@@ -485,12 +503,17 @@ def explore_transactions(store, customer_id, args):
         **_period_info(c, period), "group_by": group_by, "metric": metric,
         "direction": direction,
         "filters": {k: args[k] for k in ("category", "bucket", "merchant_id", "min_amount",
-                                         "max_amount", "day_type", "weekday", "time_of_day")
+                                         "max_amount", "day_type", "weekday", "time_of_day",
+                                         "subcategory")
                     if k in args},
         "purchases_only": purchases_only,
+        "mcc_names": _mcc_names(store, args, group_by, rows),
         "notes": ("Card purchases only: rent, bills and transfers are left out of day/time "
                   "analysis and of 'biggest purchase'." if purchases_only else
                   "Includes rent, bills and transfers.") +
+                 (" Subcategory totals count purchases with a matching merchant category "
+                  "code; do not claim they include all such purchases."
+                  if args.get("subcategory") or group_by == "subcategory" else "") +
                  " Weekend = Saturday and Sunday. Night = 22:00-06:00.",
         "groups": [{"key": r["key"], "label": labels.get(r["key"], r["key"]),
                     "value": _r(r["value"]), "count": r["n"]} for r in rows],
@@ -590,7 +613,9 @@ CATALOG = [
                     "category, bucket, amount, one weekday (e.g. friday), weekday/weekend "
                     "(weekend = Saturday and Sunday) and time of day (night = 22-06); day "
                     "and time questions count card purchases only (rent and bills left out "
-                    "unless include_bills=true), "
+                    "unless include_bills=true), subcategory by merchant category code "
+                    "(taxi, public_transport, fuel, parking, fast_food, pharmacy, flights, "
+                    "hotels…), "
                     "then group (category, merchant, month, day, weekday, hour_band, bucket, "
                     "none) and aggregate (sum, count, avg, max).",
      "parameters": _params(
@@ -601,6 +626,7 @@ CATALOG = [
          max_amount={"type": "number", "minimum": 0, "maximum": 1000000},
          day_type={"type": "string", "enum": ["weekday", "weekend"]},
          weekday={"type": "string", "enum": WEEKDAYS},
+         subcategory={"type": "string", "enum": list(SUBCATEGORIES)},
          include_bills={"type": "boolean"},
          time_of_day={"type": "string", "enum": list(_HOUR_RANGE)},
          direction={"type": "string", "enum": ["spend", "income", "all"]},

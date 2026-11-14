@@ -143,7 +143,8 @@ when the tools could not do the asked one (March → this month, yesterday → l
 this year → this month) and invented numbers when no tool ran. Now:
 
 - **Coverage:** the planner returns `coverage` (`full`/`partial`/`none`) and a one-line
-  `limitation` in the customer's language. The answer then carries `notice`, shown above
+  `limitation` in the customer's language. The answer then carries `notice` (not shown
+  as a box in the UI since #61 — the text says it), above
   the text in the UI, and the composer must say it first.
 - **Capabilities in the rules:** the prompt lists what the tools cannot do (calendar
   months/dates, transaction lists, balance history, one weekday, shop names, coffee/taxi,
@@ -164,6 +165,10 @@ this year → this month) and invented numbers when no tool ran. Now:
   transaction lists, balance history). If the model gave no limitation, the backend adds
   a localized notice. Prompt instructions alone were not enough: Gemma still answered
   "March?" with September.
+- **Subcategories (T014):** taxis, public transport, fuel, parking, fast food,
+  pharmacies, flights, hotels and more, by merchant category code. About 5% of purchases
+  have no code; users are not warned about it, but the coach never claims a subcategory
+  total includes all such purchases. Coffee and tobacco stay unsupported.
 - **Day/time questions:** one weekday ("perjantaisin"), weekend (Sat–Sun) and night
   (22–06) are supported; they count card purchases only, so a rent payment on a Saturday
   does not become "weekend spending". Dates in answer text are formatted per language.
