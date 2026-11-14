@@ -14,6 +14,15 @@ body { margin: 0; font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-ser
 .brand { font-weight: 700; display: flex; align-items: center; gap: 8px; }
 .logo { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%;
   background: var(--green); font-weight: 800; }
+.controls { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.brand { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.top { gap: 8px; }
+.controls select { max-width: 110px; padding: 6px 4px; }
+@media (max-width: 400px) { #title { display: none; } }  /* phone: logo + controls only */
+.langs { display: flex; border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,.4); }
+.langs button { background: transparent; color: #fff; border: 0; padding: 6px 8px; font: inherit;
+  font-size: 13px; font-weight: 600; cursor: pointer; }
+.langs button[aria-pressed="true"] { background: #fff; color: var(--green-dark); }
 select { max-width: 150px; padding: 6px 8px; border-radius: 8px; border: 0; font: inherit; }
 .banner { background: #fff4e5; color: #7a4100; border-bottom: 1px solid #f3c58b;
   padding: 8px 14px; font-size: 14px; text-align: center; }

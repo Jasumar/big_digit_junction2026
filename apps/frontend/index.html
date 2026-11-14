@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="fi">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -9,18 +9,25 @@
 </head>
 <body>
   <header class="top">
-    <div class="brand"><span class="logo">S</span> Money Coach</div>
-    <label class="who">
-      <span class="sr">Demo customer</span>
-      <select id="customer" aria-label="Demo customer"></select>
-    </label>
+    <div class="brand"><span class="logo">S</span> <span id="title">Rahavalmentaja</span></div>
+    <div class="controls">
+      <div class="langs" id="langs" role="group" aria-label="Kieli">
+        <button type="button" data-lang="fi">FI</button>
+        <button type="button" data-lang="sv">SV</button>
+        <button type="button" data-lang="en">EN</button>
+      </div>
+      <label class="who">
+        <span class="sr" id="customer-label">Esimerkkiasiakas</span>
+        <select id="customer" aria-label="Esimerkkiasiakas"></select>
+      </label>
+    </div>
   </header>
 
   <div id="banner" class="banner" role="status" hidden></div>
 
   <main id="feed">
     <section id="home" class="card" aria-live="polite">
-      <div class="skeleton">Loading your money…</div>
+      <div class="skeleton" id="loading">Ladataan tietojasi…</div>
     </section>
     <section id="chat" aria-live="polite"></section>
   </main>
@@ -28,8 +35,8 @@
   <footer class="dock">
     <div class="chips" id="chips"></div>
     <form id="ask" autocomplete="off">
-      <input id="q" type="text" maxlength="500" placeholder="Ask your money anything…" aria-label="Your question">
-      <button type="submit" aria-label="Send">➤</button>
+      <input id="q" type="text" maxlength="500" placeholder="Kysy rahoistasi mitä tahansa…" aria-label="Kysymyksesi">
+      <button type="submit" id="send" aria-label="Lähetä">➤</button>
     </form>
   </footer>
 

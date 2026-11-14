@@ -86,7 +86,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(200, {"customers": self.store.list_customers(limit)})
             if url.path == "/api/overview":
                 return self._json(200, orchestrator.overview(
-                    q.get("customer_id", [""])[0], self.store))
+                    q.get("customer_id", [""])[0], self.store, q.get("lang", ["en"])[0]))
         except orchestrator.BadCommand as e:
             return self._json(400, {"error": str(e)})
         except Exception as e:
