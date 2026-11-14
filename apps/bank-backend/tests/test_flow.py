@@ -114,6 +114,158 @@ class TestTools(Base):
             tools.run("simulate_change", self.store, CID, {"change_pct": -20})
 
 
+class TestOpenRouterProvider(Base):
+    """No network: a fake transport stands in for the HTTP call."""
+
+    def provider_with(self, *responses):
+        from ai import openrouter_provider as op
+
+        class Fake:
+            def __init__(self):
+                self.responses = list(responses)
+                self.payloads = []
+
+            def __call__(self, payload):
+                self.payloads.append(payload)
+                return self.responses.pop(0)
+
+        fake = Fake()
+        return op.Provider(api_key="test", transport=fake), fake
+
+    @staticmethod
+    def message(content=None, tool_calls=None):
+        return {"choices": [{"message": {"role": "assistant", "content": content,
+                                         "tool_calls": tool_calls or []}}]}
+
+    @staticmethod
+    def call(name, arguments):
+        return {"id": "c1", "type": "function",
+                "function": {"name": name, "arguments": arguments}}
+
+    def test_plan_maps_tool_calls_to_requests(self):
+        provider, fake = self.provider_with(self.message(None, [
+            self.call("spending_breakdown", '{"period": "last_month", "bogus": null}')]))
+        plan = provider.plan("Mihin rahani meni viime kuussa?", tools.describe_catalog())
+        self.assertEqual(plan, {"requests": [{"tool": "spending_breakdown",
+                                              "args": {"period": "last_month"}}]})
+        payload = fake.payloads[0]
+        self.assertEqual(payload["model"], "google/gemma-4-26b-a4b-it")
+        self.assertEqual(payload["tool_choice"], "auto")
+        self.assertEqual(payload["messages"][-1]["content"], "Mihin rahani meni viime kuussa?")
+        names = [t["function"]["name"] for t in payload["tools"]]
+        self.assertEqual(names, [t["name"] for t in tools.describe_catalog()])
+        self.assertIn("parameters", payload["tools"][0]["function"])
+
+    def test_plan_smalltalk_is_a_reply(self):
+        provider, fake = self.provider_with(self.message("Hei! Kysy rahankäytöstäsi."))
+        self.assertEqual(provider.plan("moi", tools.describe_catalog()),
+                         {"requests": [], "reply": "Hei! Kysy rahankäytöstäsi."})
+
+    def test_plan_skips_unparseable_arguments_and_caps_at_three(self):
+        provider, _ = self.provider_with(self.message(None, [
+            self.call("spending_breakdown", "not json"),
+            self.call("spender_profile", "{}"),
+            self.call("safe_to_spend", '{"horizon_days": 7}'),
+            self.call("savings_opportunities", "{}"),
+            self.call("peer_comparison", "{}"),
+        ]))
+        plan = provider.plan("x", tools.describe_catalog())
+        self.assertEqual(len(plan["requests"]), 3)
+        self.assertEqual(plan["requests"][0]["tool"], "spender_profile")
+
+    def test_compose_parses_json_and_fixes_kinds(self):
+        provider, fake = self.provider_with(self.message(
+            '```json\n{"text": "Käytit 1 234,50 € viime kuussa.", "insights": ['
+            '{"title": "Asuminen", "body": "Suurin menoerä.", "kind": "bogus"},'
+            '{"title": "no body"}]}\n```'))
+        out = provider.compose("mihin rahat meni", [{"tool": "spending_breakdown", "ok": True,
+                                                     "data": {"total_spend": 1234.5}}])
+        self.assertEqual(out["text"], "Käytit 1 234,50 € viime kuussa.")
+        self.assertEqual(out["insights"], [{"title": "Asuminen", "body": "Suurin menoerä.",
+                                            "kind": "info"}])
+        self.assertEqual(fake.payloads[0]["response_format"], {"type": "json_object"})
+        self.assertIn("spending_breakdown", fake.payloads[0]["messages"][-1]["content"])
+
+    def test_compose_falls_back_to_prose(self):
+        provider, _ = self.provider_with(self.message("Et voi näyttää tuota juuri nyt."))
+        self.assertEqual(provider.compose("x", [{"tool": "safe_to_spend", "ok": False,
+                                                 "error": "rejected"}]),
+                         {"text": "Et voi näyttää tuota juuri nyt.", "insights": []})
+
+    def test_api_error_is_loud_not_invented(self):
+        from ai import openrouter_provider as op
+        provider, _ = self.provider_with({"error": {"message": "model not found"}})
+        with self.assertRaises(op.OpenRouterError):
+            provider.plan("x", tools.describe_catalog())
+
+    def test_missing_key_is_a_clear_error(self):
+        from ai import openrouter_provider as op
+        with self.assertRaises(op.OpenRouterError) as cm:
+            op.Provider(api_key="")
+        self.assertIn("OPENROUTER_API_KEY", str(cm.exception))
+
+    def test_end_to_end_with_fake_transport(self):
+        provider, fake = self.provider_with(
+            self.message(None, [self.call("safe_to_spend", '{"horizon_days": 7}')]),
+            self.message('{"text": "Voit käyttää turvallisesti 120 €.", "insights": '
+                         '[{"title": "Turvamarginaali", "body": "7 päivän horisontti.", '
+                         '"kind": "good"}]}'))
+        answer = orchestrator.handle_command(
+            {"customer_id": CID, "text": "Kuinka paljon voin käyttää?"}, self.store, provider)
+        self.assertEqual(validate(ANSWER, answer), [])
+        self.assertEqual(answer["provider"], "openrouter")
+        self.assertEqual([t["tool"] for t in answer["trace"]], ["safe_to_spend"])
+        self.assertEqual(len(fake.payloads), 2)
+
+
+class TestProviderSelection(unittest.TestCase):
+    """The three providers coexist: picking one never disturbs the others."""
+
+    KEYS = ("AI_BASE_URL", "OPENROUTER_API_KEY", "AI_PROVIDER")
+
+    def setUp(self):
+        self.saved = {k: os.environ.get(k) for k in self.KEYS}
+
+    def tearDown(self):
+        for k, v in self.saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+    def test_stub_needs_nothing(self):
+        for k in self.KEYS:  # incl. AI_PROVIDER, so the default is what is tested
+            os.environ.pop(k, None)
+        self.assertEqual(get_provider("stub").name, "stub")
+        self.assertEqual(get_provider().name, "stub")  # the default
+
+    def test_openrouter_needs_only_its_key(self):
+        os.environ.pop("AI_BASE_URL", None)
+        os.environ["OPENROUTER_API_KEY"] = "test-key"
+        self.assertEqual(get_provider("openrouter").name, "openrouter")
+
+    def test_modal_needs_only_its_url(self):
+        os.environ.pop("OPENROUTER_API_KEY", None)
+        os.environ["AI_BASE_URL"] = "http://127.0.0.1:9"
+        self.assertEqual(get_provider("modal").name, "modal-gemma")
+
+    def test_one_providers_config_does_not_block_another(self):
+        # A Modal deployment URL set but no OpenRouter key: modal works, openrouter
+        # says what is missing, stub still answers.
+        os.environ["AI_BASE_URL"] = "http://127.0.0.1:9"
+        os.environ["OPENROUTER_API_KEY"] = ""
+        self.assertEqual(get_provider("modal").name, "modal-gemma")
+        self.assertEqual(get_provider("stub").name, "stub")
+        with self.assertRaises(RuntimeError) as cm:
+            get_provider("openrouter")
+        self.assertIn("OPENROUTER_API_KEY", str(cm.exception))
+
+    def test_unknown_provider_is_a_clear_error(self):
+        with self.assertRaises(ValueError) as cm:
+            get_provider("gpt-5")
+        self.assertIn("stub, modal, openrouter", str(cm.exception))
+
+
 class TestFlow(Base):
     def test_brief_questions(self):
         for q, tool in (("Where did my money go?", "spending_breakdown"),

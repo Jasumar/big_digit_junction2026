@@ -136,7 +136,10 @@ def main():
         Handler.store = open_store()
     except SampleDataError as e:
         sys.exit("refusing to start: %s" % e)
-    Handler.provider = get_provider()
+    try:
+        Handler.provider = get_provider()
+    except Exception as e:  # unknown AI_PROVIDER or a provider refusing to start (missing key)
+        sys.exit("refusing to start: %s" % e)
     port = int(os.environ.get("PORT", "8000"))
     srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
     info = Handler.store.info()
