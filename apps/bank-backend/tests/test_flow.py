@@ -1,4 +1,5 @@
 """End-to-end checks on the committed fixture data. Run: bash scripts/test.sh"""
+import io
 import json
 import os
 import sys
@@ -810,6 +811,27 @@ class TestFlow(Base):
             self.assertEqual(cm.exception.code, 404)
         finally:
             srv.shutdown()
+
+    def test_client_hangs_up_before_answer(self):
+        """The proxy closed the socket during a slow answer: no 500 retry, no traceback."""
+        class DeadSocket:
+            writes = 0
+            def write(self, b):
+                DeadSocket.writes += 1
+                raise BrokenPipeError(32, "Broken pipe")
+            def flush(self):
+                pass
+        body = json.dumps({"customer_id": CID, "text": "Where did my money go?"}).encode()
+        h = server.Handler.__new__(server.Handler)
+        h.store, h.provider = self.store, self.provider
+        h.command, h.path, h.request_version = "POST", "/api/command", "HTTP/1.1"
+        h.requestline = "POST /api/command HTTP/1.1"
+        h.headers = {"Content-Length": str(len(body))}
+        h.rfile, h.wfile = io.BytesIO(body), DeadSocket()
+        h.close_connection = False
+        h.do_POST()  # must not raise
+        self.assertTrue(h.close_connection)
+        self.assertEqual(DeadSocket.writes, 1)  # gave up; did not try to send a 500 too
 
 
 if __name__ == "__main__":
