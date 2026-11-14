@@ -52,7 +52,8 @@ def handle_command(command, store, provider):
     # step 7: answer goes back to the client
     return {"text": composed["text"], "insights": composed.get("insights", []),
             "visuals": present.build(results), "trace": trace,
-            "provider": getattr(provider, "name", "unknown")}
+            "provider": getattr(provider, "name", "unknown"),
+            "follow_ups": composed.get("follow_ups", [])}
 
 
 def overview(customer_id, store):

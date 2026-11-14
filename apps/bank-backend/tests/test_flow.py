@@ -195,5 +195,32 @@ class TestFlow(Base):
             srv.shutdown()
 
 
+
+
+class TestFollowUps(Base):
+    def test_savings_opportunities_offers_choices(self):
+        a = self.ask("How could I save more?")
+        self.assertEqual(validate(ANSWER, a), [])
+        for f in a["follow_ups"]:
+            self.assertIn(f["kind"], ("clarify", "explore"))
+            self.assertTrue(f["label"] and f["prompt"])
+
+    def test_tapping_a_follow_up_is_itself_a_valid_answer(self):
+        a = self.ask("How could I save more?")
+        if not a["follow_ups"]:
+            self.skipTest("no savings ideas for this fixture customer")
+        b = self.ask(a["follow_ups"][0]["prompt"])
+        self.assertEqual(validate(ANSWER, b), [])
+        self.assertEqual(b["trace"][0]["tool"], "simulate_change")
+
+    def test_follow_ups_capped_and_deduped(self):
+        a = self.ask("What kind of spender am I?")
+        self.assertLessEqual(len(a["follow_ups"]), 3)
+        self.assertEqual(len(a["follow_ups"]), len({f["prompt"] for f in a["follow_ups"]}))
+
+    def test_smalltalk_has_no_follow_ups(self):
+        a = self.ask("hello")
+        self.assertEqual(a["follow_ups"], [])
+
 if __name__ == "__main__":
     unittest.main()

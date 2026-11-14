@@ -29,5 +29,8 @@ category-name table, and locale formatting of money and dates (Finnish: `1 234,5
 ## Conventions
 
 `index.html` shell, `app.js` renders the home card and answers, `styles.css`. An answer
-is `{text, insights, visuals, trace}`; visuals are `stats`, `bars`, `table` — to add a
-visual type, add it in `bank-backend/present.py` and in `renderVisual`.
+is `{text, insights, visuals, trace, follow_ups?}`; visuals are `stats`, `bars`, `table`
+— to add a visual type, add it in `bank-backend/present.py` and in `renderVisual`.
+`follow_ups` (0-3) are tappable suggestions rendered under the insights; tapping one
+sends its `prompt` the same way typing it would (`renderAnswer`, `.followups` in
+`styles.css`).

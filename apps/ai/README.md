@@ -122,8 +122,11 @@ Stub needs nothing. **To wire another model:** add
 `provider.py`) and register it in `get_provider`. `plan` receives the tool catalog in
 JSON-schema form, so provider tool-calling maps onto it directly; return
 `{"requests": [{"tool", "args"}]}` or `{"reply": ...}`. `compose` gets the results and
-returns `{"text", "insights": [{title, body, kind}]}`. The backend validates every
-request (step 3) and builds charts itself.
+returns `{"text", "insights": [{title, body, kind}], "follow_ups": [{kind, label,
+prompt}]}` (`follow_ups` is optional, at most 3: tappable next-question suggestions;
+`prompt` is sent back as the next command verbatim if the customer taps it — no new
+tool or argument is needed to support one). The backend validates every request
+(step 3) and builds charts itself.
 
 ## Language
 

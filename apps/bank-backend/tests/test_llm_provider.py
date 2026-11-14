@@ -133,6 +133,37 @@ class TestLLMProvider(unittest.TestCase):
         with self.assertRaises(ValueError):
             Provider(base_url="")
 
+    def test_follow_ups_pass_through_and_are_sanitized(self):
+        FakeLLM.replies = [
+            {"requests": [{"tool": "spending_breakdown", "args": {}}]},
+            {"text": "You spent 500 EUR.", "insights": [],
+             "follow_ups": [
+                 {"kind": "clarify", "label": "Cut Restaurants?",
+                  "prompt": "What if I cut Restaurants by 20%?"},
+                 {"kind": "bogus", "label": "How could I save more?",
+                  "prompt": "How could I save more?"},
+                 {"label": "missing kind is fine too", "prompt": "ok"},
+                 {"label": "no prompt, dropped"},
+                 "not even a dict",
+             ]},
+        ]
+        a = orchestrator.handle_command({"customer_id": "CUST00001", "text": "x"},
+                                        self.store, self.p)
+        self.assertEqual(validate(ANSWER, a), [])
+        self.assertEqual(len(a["follow_ups"]), 3)  # the two bad entries were dropped
+        self.assertEqual(a["follow_ups"][0]["kind"], "clarify")
+        self.assertEqual(a["follow_ups"][1]["kind"], "explore")  # bogus -> normalised
+
+    def test_missing_follow_ups_defaults_to_empty(self):
+        FakeLLM.replies = [
+            {"requests": [{"tool": "spending_breakdown", "args": {}}]},
+            {"text": "You spent 500 EUR.", "insights": []},
+        ]
+        a = orchestrator.handle_command({"customer_id": "CUST00001", "text": "x"},
+                                        self.store, self.p)
+        self.assertEqual(validate(ANSWER, a), [])
+        self.assertEqual(a["follow_ups"], [])
+
 
 if __name__ == "__main__":
     unittest.main()

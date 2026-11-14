@@ -56,9 +56,18 @@ Rules:
 to whole numbers. In Finnish/Swedish write amounts like "1 234 €".
 - If a request was rejected or failed, say briefly what you could not check.
 - Do not give investment advice. Keep "text" to 2-4 sentences.
+- Optionally suggest 0-3 short follow-up questions the customer could tap instead of \
+typing, in "follow_ups": [{{"kind": "clarify|explore", "label": "...", "prompt": "..."}}]. \
+"label" is button text, 6 words or fewer, in the customer's language. "prompt" is the \
+exact next message the customer would send if they tapped it, also in their language. \
+Use "clarify" when narrowing something would change the numbers (for example, which \
+category to focus on, or which of several ideas they prefer) -- offer the specific \
+choices as separate follow_ups rather than asking an open question with no buttons. Use \
+"explore" for a natural next question. Only suggest something the tools above could \
+actually answer; leave "follow_ups" empty rather than inventing one.
 - Reply with JSON only: {{"text": "...", "insights": [{{"title": "...", "body": "...", \
-"kind": "info|good|warn|tip"}}]}} with at most 3 insights. Charts are shown separately; \
-do not describe them."""
+"kind": "info|good|warn|tip"}}], "follow_ups": [...]}} with at most 3 insights and at \
+most 3 follow_ups. Charts are shown separately; do not describe them."""
 
 
 def _plan_schema(tool_names):
@@ -86,6 +95,11 @@ COMPOSE_SCHEMA = {
                            "kind": {"type": "string",
                                     "enum": ["info", "good", "warn", "tip"]}},
             "required": ["title", "body", "kind"]}},
+        "follow_ups": {"type": "array", "maxItems": 3, "items": {
+            "type": "object",
+            "properties": {"kind": {"type": "string", "enum": ["clarify", "explore"]},
+                           "label": {"type": "string"}, "prompt": {"type": "string"}},
+            "required": ["label", "prompt"]}},
     },
     "required": ["text", "insights"],
 }
@@ -191,7 +205,14 @@ class Provider:
                                     "body": str(i.get("body", "")),
                                     "kind": i.get("kind") if i.get("kind") in
                                     ("info", "good", "warn", "tip") else "info"}
-                                   for i in out.get("insights", [])[:3] if isinstance(i, dict)]}
+                                   for i in out.get("insights", [])[:3] if isinstance(i, dict)],
+                      "follow_ups": [{"kind": f.get("kind") if f.get("kind") in
+                                      ("clarify", "explore") else "explore",
+                                      "label": str(f.get("label", ""))[:80],
+                                      "prompt": str(f.get("prompt", ""))[:200]}
+                                     for f in out.get("follow_ups", [])[:3]
+                                     if isinstance(f, dict) and f.get("label")
+                                     and f.get("prompt")]}
             if not answer["text"].strip():
                 raise LLMError("empty answer text")
             return answer

@@ -56,6 +56,20 @@ CALCULATION_RESULT = {
     },
 }
 
+# a suggestion shown as a tappable button; clicking it sends `prompt` as the next
+# command, same as if the customer had typed it. "clarify" narrows something that
+# would change the numbers (e.g. which category); "explore" is a natural next question.
+FOLLOW_UP = {
+    "type": "object",
+    "required": ["label", "prompt"],
+    "additionalProperties": False,
+    "properties": {
+        "kind": {"type": "string", "enum": ["clarify", "explore"]},
+        "label": {"type": "string", "minLength": 1, "maxLength": 80},   # button text
+        "prompt": {"type": "string", "minLength": 1, "maxLength": 200},  # sent on click
+    },
+}
+
 # bank-backend -> client (step 7)
 ANSWER = {
     "type": "object",
@@ -85,6 +99,8 @@ ANSWER = {
                                      "note": {"type": "string"}}},
         },
         "provider": {"type": "string"},
+        # optional: 0-3 suggested next questions, newest-answer-specific
+        "follow_ups": {"type": "array", "maxItems": 3, "items": FOLLOW_UP},
     },
 }
 
@@ -99,6 +115,8 @@ EXAMPLES = {
         "visuals": [{"type": "stats", "items": [{"label": "Spent", "value": "EUR 1,234"}]}],
         "trace": [{"tool": "spending_breakdown", "approved": True}],
         "provider": "stub",
+        "follow_ups": [{"kind": "explore", "label": "How could I save more?",
+                       "prompt": "How could I save more?"}],
     },
 }
 

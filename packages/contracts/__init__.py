@@ -4,6 +4,6 @@ Python 3 standard library only. `validate(schema, value)` returns a list of prob
 (empty = valid). The same shapes are what the frontend receives as JSON.
 """
 from .schemas import (  # noqa: F401
-    ANSWER, CALCULATION_REQUEST, CALCULATION_RESULT, COMMAND, EXAMPLES, PERIODS,
-    PLAN, validate,
+    ANSWER, CALCULATION_REQUEST, CALCULATION_RESULT, COMMAND, EXAMPLES, FOLLOW_UP,
+    PERIODS, PLAN, validate,
 )
