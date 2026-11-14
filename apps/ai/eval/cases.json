@@ -393,6 +393,33 @@
     "kauppakoodi"
    ],
    "notice": false
+  },
+  {
+   "id": "fi-car",
+   "lang": "fi",
+   "q": "Voinko ostaa 20 000 €:n auton?",
+   "tools": [
+    "purchase_affordability"
+   ],
+   "must_not": [
+    "kannattaa ostaa",
+    "älä osta",
+    "saat lainan"
+   ],
+   "notice": false
+  },
+  {
+   "id": "en-home-range",
+   "lang": "en",
+   "q": "How expensive a home could I afford?",
+   "tools": [
+    "purchase_affordability"
+   ],
+   "must_not": [
+    "you should buy",
+    "you will get the loan"
+   ],
+   "notice": false
   }
  ]
 }

@@ -80,6 +80,44 @@ T = {
     "hour_band": {"fi": "vuorokaudenaika", "sv": "tid på dygnet"},
     "bucket": {"fi": "menokori", "sv": "utgiftskorg"}, "none": {"fi": "yhteensä", "sv": "totalt"},
     "subcategory": {"fi": "alaluokka", "sv": "underkategori"},
+    # big purchases (T020); Finnish/Swedish wording is a draft (Q11)
+    "Fits your numbers": {"fi": "Mahtuu lukuihisi", "sv": "Ryms i dina siffror"},
+    "A stretch": {"fi": "Tiukka", "sv": "Snävt"},
+    "Save first": {"fi": "Säästä ensin", "sv": "Spara först"},
+    "Over your current budget": {"fi": "Yli nykyisen budjettisi",
+                                 "sv": "Över din nuvarande budget"},
+    "Home": {"fi": "Asunto", "sv": "Bostad"}, "Car": {"fi": "Auto", "sv": "Bil"},
+    "Purchase": {"fi": "Hankinta", "sv": "Köp"},
+    "%s for %s": {"fi": "%s, %s", "sv": "%s för %s"},
+    "Loan payment": {"fi": "Lainan erä", "sv": "Lånebetalning"},
+    "%d years at %s": {"fi": "%d v, korko %s", "sv": "%d år, ränta %s"},
+    "paid in cash": {"fi": "käteisellä", "sv": "kontant"},
+    "Left each month after": {"fi": "Jää kuussa käteen sen jälkeen",
+                              "sv": "Kvar per månad efteråt"},
+    "now %s": {"fi": "nyt %s", "sv": "nu %s"},
+    "Price your numbers allow": {"fi": "Lukujesi sallima hinta",
+                                 "sv": "Pris som dina siffror tillåter"},
+    "up to %s": {"fi": "enintään %s", "sv": "upp till %s"},
+    "How it adds up, per month": {"fi": "Näin se laskettiin, kuukaudessa",
+                                  "sv": "Så räknas det, per månad"},
+    "Spending now": {"fi": "Menot nyt", "sv": "Utgifter nu"},
+    "Rent you would no longer pay": {"fi": "Nykyinen asumiskulu jää pois",
+                                     "sv": "Nuvarande boendekostnad faller bort"},
+    "Running costs": {"fi": "Käyttökulut", "sv": "Driftskostnader"},
+    "Left after the purchase": {"fi": "Jää käteen hankinnan jälkeen",
+                                "sv": "Kvar efter köpet"},
+    "If interest rose to %s": {"fi": "Jos korko nousisi %s:iin",
+                               "sv": "Om räntan steg till %s"},
+    "Savings": {"fi": "Säästöt", "sv": "Sparande"},
+    "Price": {"fi": "Hinta", "sv": "Pris"},
+    "Down payment": {"fi": "Omarahoitus", "sv": "Kontantinsats"},
+    "Loan": {"fi": "Laina", "sv": "Lån"},
+    "Savings you mentioned": {"fi": "Mainitsemasi säästöt", "sv": "Sparande du nämnde"},
+    "Emergency buffer (%d months of essentials)": {
+        "fi": "Puskuri (%d kk pakollisia menoja)", "sv": "Buffert (%d mån nödvändiga utgifter)"},
+    "Still to save": {"fi": "Säästettävää vielä", "sv": "Kvar att spara"},
+    "about %d months at your current pace": {"fi": "noin %d kk nykyisellä tahdilla",
+                                             "sv": "cirka %d mån i nuvarande takt"},
 }
 WEEKDAYS = {"fi": dict(zip("Mon Tue Wed Thu Fri Sat Sun".split(),
                            "ma ti ke to pe la su".split())),
@@ -111,6 +149,11 @@ class Fmt:
     def pct(self, x, signed=False):
         s = ("%+.0f" if signed else "%.0f") % x
         return s + ("%" if self.lang == "en" else " %")
+
+    def rate(self, x):
+        """Interest rate with one decimal when it has one: "3.5%" / "3,5 %"."""
+        s = ("%.1f" % x).rstrip("0").rstrip(".")
+        return s + "%" if self.lang == "en" else s.replace(".", ",") + " %"
 
     def date(self, iso):
         if not iso:
@@ -272,3 +315,59 @@ def _explore_transactions(d, f):
              "items": [{"label": _group_label(g, d["group_by"], f), "value": g["value"],
                         "display": unit(g["value"]), "note": "%d×" % g["count"]}
                        for g in d["groups"]]}]
+
+
+_PURCHASE_STATUS = {"fits": ("Fits your numbers", "good"), "stretch": ("A stretch", "warn"),
+                    "save_first": ("Save first", "warn"),
+                    "over_budget": ("Over your current budget", "bad")}
+_KIND = {"home": "Home", "car": "Car", "other": "Purchase"}
+
+
+def _purchase_affordability(d, f):
+    a = d["assumptions"]
+    kind = f.t(_KIND[d["kind"]])
+    if d["status"] == "range_only":
+        return [{"type": "stats", "items": [
+            {"label": f.t("Price your numbers allow"),
+             "value": f.t("up to %s") % f.eur(d["max_price_estimate"]),
+             "sub": kind + (" · " + f.t("%d years at %s") % (a["loan_years"], f.rate(
+                 a["interest_rate_pct"])) if a["loan_years"] else "")}]}]
+    label, tone = _PURCHASE_STATUS[d["status"]]
+    terms = (f.t("%d years at %s") % (a["loan_years"], f.rate(a["interest_rate_pct"]))
+             if a["loan_years"] else f.t("paid in cash"))
+    after = d["monthly_margin_after"]
+    stats = [{"label": f.t("%s for %s") % (kind, f.eur(d["price"])), "value": f.t(label),
+              "tone": tone},
+             {"label": f.t("Loan payment"), "value": f.t("%s/mo") % f.eur(d["monthly_payment"]),
+              "sub": terms},
+             {"label": f.t("Left each month after"), "value": f.eur(after),
+              "tone": "good" if after >= 0 else "bad",
+              "sub": f.t("now %s") % f.eur(d["monthly_margin"])}]
+    month = [[f.t("Income"), f.eur(d["monthly_income"])],
+             [f.t("Spending now"), "-" + f.eur(d["monthly_spend"])]]
+    if d["housing_cost_freed"]:
+        month.append([f.t("Rent you would no longer pay"), "+" + f.eur(d["housing_cost_freed"])])
+    if d["monthly_payment"]:
+        month.append([f.t("Loan payment"), "-" + f.eur(d["monthly_payment"])])
+    if d["running_costs_monthly"]:
+        month.append([f.t("Running costs"), "-" + f.eur(d["running_costs_monthly"])])
+    month.append([f.t("Left after the purchase"), f.eur(after)])
+    if d["monthly_margin_after_stress"] is not None:
+        month.append([f.t("If interest rose to %s") % f.rate(a["stress_rate_pct"]),
+                      f.eur(d["monthly_margin_after_stress"])])
+    money = [[f.t("Price"), f.eur(d["price"])], [f.t("Down payment"), f.eur(d["down_payment"])]]
+    if d["loan_amount"]:
+        money.append([f.t("Loan"), f.eur(d["loan_amount"])])
+    money.append([f.t("Balance now"), f.eur(d["balance"])])
+    if d["other_savings_stated"]:
+        money.append([f.t("Savings you mentioned"), f.eur(d["other_savings_stated"])])
+    money.append([f.t("Emergency buffer (%d months of essentials)") % a["buffer_months"],
+                  f.eur(d["emergency_buffer"])])
+    if d["savings_gap"]:
+        money.append([f.t("Still to save"), f.eur(d["savings_gap"]) + (
+            " (" + f.t("about %d months at your current pace") % d["months_to_close_gap"] + ")"
+            if d["months_to_close_gap"] else "")])
+    return [{"type": "stats", "items": stats},
+            {"type": "table", "title": f.t("How it adds up, per month"), "columns": ["", "EUR"],
+             "rows": month},
+            {"type": "table", "title": f.t("Savings"), "columns": ["", "EUR"], "rows": money}]

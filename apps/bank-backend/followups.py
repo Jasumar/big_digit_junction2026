@@ -14,6 +14,7 @@ the tools did not produce, and duplicates and the question just asked are droppe
 """
 from ai.grounding import unbacked
 from cloud import glossary
+from present import Fmt
 import scope
 
 CAP = 3
@@ -34,7 +35,32 @@ T = {
                     "Paljonko voin turvallisesti kuluttaa tällä viikolla?"),
              "sv": ("Tryggt att spendera i veckan?",
                     "Hur mycket kan jag tryggt spendera den här veckan?")},
+    # big purchases (T020); {thing} per kind below, {price} formatted for the language
+    "range": {"en": ("What price could I afford?", "How expensive a {thing} could I afford?"),
+              "fi": ("Mikä hinta mahtuisi?", "Minkä hintainen {thing} mahtuisi lukuihini?"),
+              "sv": ("Vilket pris klarar jag?", "Hur dyr {thing} skulle mina siffror klara?")},
+    "longer": {"en": ("With a 30-year loan?",
+                      "Could I afford a {thing} for {price} with a 30-year loan?"),
+               "fi": ("30 vuoden lainalla?",
+                      "Voisinko ostaa {thing_obj} hintaan {price} 30 vuoden lainalla?"),
+               "sv": ("Med 30 års lån?",
+                      "Har jag råd med {thing_obj} för {price} med 30 års lån?")},
 }
+THING = {"home": {"en": ("home", "home"), "fi": ("asunto", "asunnon"),
+                  "sv": ("bostad", "en bostad")},
+         "car": {"en": ("car", "car"), "fi": ("auto", "auton"), "sv": ("bil", "en bil")},
+         "other": {"en": ("big purchase", "big purchase"), "fi": ("iso hankinta", "ison hankinnan"),
+                   "sv": ("stort köp", "ett stort köp")}}
+
+
+def _purchase_fu(key, lang, kind, price=None, fu_kind="explore"):
+    lang = lang if lang in ("en", "fi", "sv") else "en"
+    label, prompt = T[key][lang]
+    thing, thing_obj = THING[kind][lang]
+    prompt = prompt.replace("{thing_obj}", thing_obj).replace("{thing}", thing)
+    if price is not None:
+        prompt = prompt.replace("{price}", Fmt(lang).eur(price))
+    return {"kind": fu_kind, "label": label, "prompt": prompt}
 
 
 def _fu(key, lang, kind="explore", cat=None):
@@ -69,6 +95,13 @@ def fallback(results, lang):
         elif tool == "savings_opportunities":
             # where would they like to save? the top ideas as one-tap choices
             out += [_fu("cut", lang, "clarify", i["category"]) for i in d["ideas"][:2]]
+        elif tool == "purchase_affordability":
+            if d["status"] != "range_only":
+                out.append(_purchase_fu("range", lang, d["kind"]))
+                if d["kind"] == "home" and d["assumptions"]["loan_years"] < 30:
+                    out.append(_purchase_fu("longer", lang, d["kind"], d["price"], "clarify"))
+            if d["status"] != "fits":
+                out.append(_fu("save", lang))
         elif tool in ("simulate_change", "explore_transactions"):
             out += [_fu("save", lang), _fu("safe", lang)]
     return out

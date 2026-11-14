@@ -732,6 +732,130 @@ class TestGemma4Fixes(Base):
         self.assertEqual(fi["text"], "Arjen pikkukulut ja asuminen.")  # already Finnish
 
 
+class TestBigPurchases(Base):
+    """T020: could the customer's own finances carry a home, a car or another big purchase?
+    An illustration from their own data, never advice to buy and never a loan decision."""
+
+    def run_tool(self, args, cid=CID):
+        ok, why = approval.check({"tool": "purchase_affordability", "args": args}, cid)
+        self.assertTrue(ok, why)
+        return tools.run("purchase_affordability", self.store, cid, args)
+
+    def test_annuity(self):
+        self.assertAlmostEqual(tools._annuity(100000, 3.5, 25), 500.62, places=1)
+        self.assertAlmostEqual(tools._annuity(12000, 0, 1), 1000.0)
+        self.assertEqual(tools._annuity(0, 5, 10), 0.0)
+
+    def test_approval(self):
+        ok = lambda a: approval.check({"tool": "purchase_affordability", "args": a}, CID)[0]  # noqa: E731
+        self.assertTrue(ok({"kind": "home", "price": 250000, "down_payment": 30000}))
+        self.assertTrue(ok({}))
+        self.assertFalse(ok({"kind": "boat", "price": 1000}))
+        self.assertFalse(ok({"kind": "car", "price": -5}))
+        self.assertFalse(ok({"kind": "car", "price": 20000, "loan_years": 99}))
+        self.assertFalse(ok({"kind": "car", "price": 20000, "customer_id": "CUST00002"}))
+
+    def test_max_price_is_consistent_with_the_verdict(self):
+        for cid in [c["customer_id"] for c in self.store.list_customers(10)]:
+            for kind in ("home", "car", "other"):
+                d = self.run_tool({"kind": kind}, cid)
+                self.assertEqual(d["status"], "range_only")
+                self.assertGreaterEqual(d["max_price_estimate"], 0)
+                if d["max_price_estimate"] >= 1:
+                    at = self.run_tool({"kind": kind, "price": d["max_price_estimate"]}, cid)
+                    self.assertNotIn("savings_short", at["reasons"], (cid, kind))
+                    self.assertNotIn("monthly_negative", at["reasons"], (cid, kind))
+                    self.assertNotIn("payment_share_high", at["reasons"], (cid, kind))
+                    self.assertNotIn("stress_test_negative", at["reasons"], (cid, kind))
+                far = self.run_tool({"kind": kind, "price": 2000000}, cid)
+                self.assertIn(far["status"], ("save_first", "over_budget"), (cid, kind))
+
+    def test_more_own_money_closes_the_gap(self):
+        base = self.run_tool({"kind": "car", "price": 20000})
+        more = self.run_tool({"kind": "car", "price": 20000, "other_savings": 10000})
+        self.assertLessEqual(more["savings_gap"], base["savings_gap"])
+        self.assertEqual(more["other_savings_stated"], 10000)
+        down = self.run_tool({"kind": "car", "price": 20000, "down_payment": 15000})
+        self.assertEqual(down["loan_amount"], 5000)
+        self.assertLess(down["monthly_payment"], base["monthly_payment"])
+
+    def test_home_replaces_rent_and_is_stress_tested(self):
+        d = self.run_tool({"kind": "home", "price": 150000})
+        self.assertEqual(d["housing_cost_freed"], d["monthly_housing_now"])
+        self.assertIsNotNone(d["monthly_payment_stress"])
+        self.assertGreater(d["monthly_payment_stress"], d["monthly_payment"])
+        keep = self.run_tool({"kind": "home", "price": 150000, "replaces_housing": False})
+        self.assertEqual(keep["housing_cost_freed"], 0)
+        cash = self.run_tool({"kind": "other", "price": 3000})
+        self.assertEqual((cash["loan_amount"], cash["monthly_payment"]), (0, 0))
+
+    def test_result_is_an_illustration_not_advice(self):
+        d = self.run_tool({"kind": "home", "price": 250000})
+        self.assertIn("not advice to buy", d["notes"])
+        text = json.dumps(d).lower()
+        for w in ("peer", "median", "cohort", "you should buy"):
+            self.assertNotIn(w, text)
+
+    def test_questions_reach_the_tool_in_three_languages(self):
+        for q, kind in (("Could I afford a €20,000 car?", "car"),
+                        ("Voinko ostaa 200 000 €:n asunnon?", "home"),
+                        ("Har jag råd med en bil för 15 000 €?", "car"),
+                        ("How expensive a home could I afford?", "home")):
+            a = self.ask(q)
+            self.assertEqual(validate(ANSWER, a), [], q)
+            self.assertEqual([t["tool"] for t in a["trace"]], ["purchase_affordability"], q)
+            self.assertTrue(a["trace"][0]["approved"], q)
+            self.assertTrue(a["visuals"], q)
+            self.assertNotIn("notice", a, q)
+
+    def test_answer_leaves_the_decision_to_the_customer(self):
+        a = self.ask("Could I afford a €20,000 car?")
+        self.assertIn("not a loan decision", a["text"])
+        for w in ("you should buy", "don't buy", "you will get the loan"):
+            self.assertNotIn(w, a["text"].lower())
+
+    def test_follow_up_turn_keeps_the_purchase(self):
+        history = [{"role": "user", "text": "Can I afford a 250 000 € apartment?"},
+                   {"role": "coach", "text": "..."}]
+        a = orchestrator.handle_command({"customer_id": CID, "history": history,
+                                         "text": "What if I put 40 000 down?"},
+                                        self.store, self.provider)
+        self.assertEqual(a["trace"][0]["tool"], "purchase_affordability")
+        plan = self.provider.plan("What if I put 40 000 down?", [], history)
+        self.assertEqual(plan["requests"][0]["args"],
+                         {"kind": "home", "price": 250000.0, "down_payment": 40000.0})
+
+    def test_purchase_questions_are_in_scope(self):
+        import scope
+        lim = lambda q, lang: scope.limitation(q, lang, "2026-09-30")  # noqa: E731
+        self.assertEqual(lim("Is a 2024 car for 18 000 € within my budget? Can I afford it?",
+                             "en"), "")
+        self.assertEqual(lim("Mahtuuko 200 000 €:n asunto budjettiini?", "fi"), "")
+        self.assertIn("tallentaa", lim("Aseta minulle 300 euron budjetti ravintoloille.", "fi"))
+
+    def test_charts_and_follow_ups_localized_and_answerable(self):
+        import followups
+        import present
+        d = self.run_tool({"kind": "home", "price": 250000})
+        res = [{"tool": "purchase_affordability", "ok": True, "data": d}]
+        fi = json.dumps(present.build(res, "fi"), ensure_ascii=False)
+        for w in ("Loan payment", "Down payment", "Still to save", "years at"):
+            self.assertNotIn(w, fi)
+        self.assertIn("Omarahoitus", fi)
+        self.assertIn("3,5", fi)  # interest keeps its decimal
+        from ai.grounding import known_numbers
+        for lang in ("fi", "sv", "en"):
+            fus = followups.clean(followups.fallback(res, lang), "x", lang, "2026-09-30",
+                                  known_numbers(res, "", lang))
+            self.assertGreaterEqual(len(fus), 2, lang)
+            for f in fus:  # every suggestion leads to a purchase or savings answer
+                if lang != "en" and f["prompt"] == followups.T["save"][lang][1]:
+                    continue  # the offline stub reads English only (known limit)
+                tool = self.provider.plan(f["prompt"], [])["requests"][0]["tool"]
+                self.assertIn(tool, ("purchase_affordability", "savings_opportunities"),
+                              f["prompt"])
+
+
 class TestFlow(Base):
     def test_brief_questions(self):
         for q, tool in (("Where did my money go?", "spending_breakdown"),
