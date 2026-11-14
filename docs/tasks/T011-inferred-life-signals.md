@@ -1,6 +1,6 @@
 # T011 — Life signals from transactions, standalone (not wired to the AI yet)
 
-**Owner:** `TODO` **Status:** todo
+**Owner:** `TODO` **Status:** review
 **Branch:** `task/t011-inferred-life-signals`
 
 ## Goal
@@ -23,6 +23,7 @@ Everything else needs agreement first.
 ```text
 apps/bank-backend/calculation/signals.py      (new: MCC table, signal rules, report command)
 apps/bank-backend/tests/test_signals.py       (new)
+docs/MASTER_PLAN.md                           (index row only)
 ```
 
 Deliberately **not** allowed: `calculation/tools.py`, `calculation/README.md`,
@@ -101,24 +102,26 @@ or fewer than 2% of customers. Tune the threshold, or drop the signal.
 
 ## Acceptance criteria
 
-- [ ] `test_signals.py` unit-tests `signals_from_counts` on hand-made counts: each signal
-      fires just at its threshold, not one below, and empty counts give `[]`.
-- [ ] A test proves health and bar MCCs never produce a signal, however many purchases
-      there are.
-- [ ] A test asserts every MCC in the loaded database is in `MCC_NAMES` (fixture in CI;
-      the full data when it is loaded).
-- [ ] Fixture tests pin the expected signals for at least two of CUST00001–06.
-- [ ] `--report` runs on the full database. Its output (signal shares, timing) is pasted
-      into this file's Notes with the date, and the thresholds are tuned until no signal
-      is flagged.
-- [ ] p95 under 5 ms per customer on the full data, matching the existing tools.
-- [ ] `git diff main --stat` shows only the two allowed files and this task file.
+- [x] `test_signals.py` unit-tests `signals_from_counts` on hand-made counts: each signal
+      fires just at its threshold, not one below, empty counts give `[]`, thresholds scale
+      with the period (`TestRules`).
+- [x] Health and bar MCCs, and toy shops, never produce a signal, however many purchases
+      there are (`test_never_inferred_codes_make_no_signal`).
+- [x] Every MCC in the loaded database is in `MCC_NAMES` (fixture in CI; the full data
+      too, via `TestFullData`).
+- [x] Fixture tests pin the expected signals for CUST00004, 05 and 06.
+- [x] `--report` runs on the full database; output below. No signal is flagged for the
+      default period.
+- [x] p95 under 5 ms per customer on the full data (0.73 ms).
+- [x] `git diff main --stat`: `signals.py`, `test_signals.py`, this file, and one index
+      row in `MASTER_PLAN.md`. `tools.py`, `present.py` and `apps/ai/` are untouched.
 
 ## Verify
 
 ```bash
 bash scripts/check.sh
 bash scripts/test.sh                                         # picks up test_signals.py
+SPANKKI_DB=<path to full db> python3 -m unittest tests.test_signals.TestFullData   # from apps/bank-backend; skipped without the full data
 python3 apps/bank-backend/calculation/signals.py --report    # needs the full DB (packages/cloud/README.md §Setup)
 ```
 
@@ -143,3 +146,36 @@ Decided while drafting (2026-11-14), open to change by the owner:
 - **Not here:** location from postal code, rent vs mortgage, household size (one account
   per customer), and letting the customer dismiss a signal (needs stored per-customer
   state, which nothing has yet).
+
+## Results (2026-11-14, full data, 5,100 customers)
+
+`--report`, default period `last_90_days` (thresholds as in the table above):
+
+| Signal | Customers | Share |
+| --- | ---: | ---: |
+| drives | 3,571 | 70.0% |
+| public_transport | 799 | 15.7% |
+| taxis | 584 | 11.5% |
+| eats_out | 3,407 | 66.8% |
+| events | 3,828 | 75.1% |
+| travels | 1,821 | 35.7% |
+| invests | 1,470 | 28.8% |
+| regular_salary | 3,431 | 67.3% |
+
+Signals per customer: 0 → 50, 1 → 287, 2 → 713, 3 → 1,208, 4 → 1,332, 5 → 971, 6 → 402,
+7 → 117, 8 → 20. Time per customer: p50 0.22 ms, p95 0.73 ms. Unknown MCCs: none.
+
+- **Thresholds are untuned.** None is flagged, so I left the starting values. `drives`,
+  `eats_out` and `events` are held by two thirds or more of customers, which makes them
+  weak at telling people apart; raising `events` (now 3 per 90 days) and `eats_out` is the
+  first thing to try if the follow-up wants sharper labels. This is synthetic data, so do
+  not read the shares as Finnish behaviour.
+- **`regular_salary` is flagged on `last_12_months`** (98.7%, too common). The default
+  period is unaffected; whoever wires it up should either keep the 90-day period or drop
+  that signal for longer ones.
+- **`regular_salary` is only 67% at 90 days.** Some customers' salary gaps fall outside
+  25–35 days; not investigated.
+- **Windows:** `scripts/test.sh` needs `python3`, which this machine lacks; I ran the same
+  `unittest discover` command with `python`. Seven errors in `test_flow.py` and
+  `test_llm_provider.py` (`tearDownClass` cannot delete a temp database that is still
+  open, and `TestEvalRunner.test_checks`) occur on main too, without this task's files.
