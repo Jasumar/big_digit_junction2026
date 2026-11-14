@@ -18,6 +18,17 @@ jobs:
       - name: Repo checks
         run: bash scripts/check.sh
 
+  tests:
+    name: Python tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Tests
+        run: bash scripts/test.sh
+
   # --- template for the real checks ---------------------------------------------
   # Copy this job when the stack is decided, keep the commands identical to the
   # ones documented in README.md §Commands, and delete whatever does not apply.

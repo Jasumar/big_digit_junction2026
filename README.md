@@ -2,11 +2,11 @@
 
 Scaffold for **Junction 2026** (S-pankki). Working idea: a client asks a question or
 gives a command, a locally hosted AI model answers with insights, backed by
-calculations over the client's own data. Scope and stack are **not decided**; this
-repo exists so work can start in parallel with almost no setup.
+calculations over the client's own data.
 
-Status: architecture decided (`docs/SYSTEM_MAP.md`), skeleton only. No code, no
-stack. Every `TODO` is an open question, not a hint.
+Status: **working MVP** — an S-pankki money coach over the hackathon transaction data,
+with a rule-based AI stub ready to be swapped for a real provider. Choices made while
+building it: `docs/tasks/Decisions.md`.
 
 ## Structure
 
@@ -26,7 +26,32 @@ Flow: UI → client → S-pankki backend → local AI model; the backend runs ap
 calculations over cloud data and the answer travels back the same way. Full picture
 and numbered steps: `docs/SYSTEM_MAP.md`.
 
-Each directory has a README with its intent and an empty Setup section.
+Each directory has a README with its intent, setup and conventions.
+
+## Run
+
+```bash
+bash scripts/test.sh                       # tests on fixture data, no install
+python3 apps/bank-backend/server.py        # http://localhost:8000 (mobile-first UI)
+```
+
+No dependencies: Python 3.10+ standard library, plain JS in the browser. With no
+database present the server builds a small fixture (6 customers). For the full
+dataset (all four CSVs: 5,100 customers, 3.6M transactions, 200 mortgage
+applications) download it from `hackjunction/Junction-2026-S-pankki` and build:
+
+```bash
+python3 packages/cloud/fetch_data.py   # ~364 MB into packages/cloud/data/raw/, gitignored
+python3 packages/cloud/seed.py --full  # ~70 s, ~500 MB database, gitignored
+```
+
+The raw data is too big for git (GitHub's limit is 100 MB per file), so every clone
+fetches it once with the commands above.
+
+Env: `PORT`, `AI_PROVIDER` (only `stub` so far), `SPANKKI_DB`, `REQUIRE_FULL_DATA` — see
+`.env.example`. On the sample data the server prints a warning and the UI shows a
+banner; for the demo start it with `REQUIRE_FULL_DATA=1` so it refuses to run without the
+full dataset. `GET /api/health` reports which data is loaded.
 
 ## Start
 
@@ -37,7 +62,7 @@ cp preferences.example.md preferences.md  # optional, for your agent
 bash scripts/check.sh                     # repo checks
 ```
 
-Read: `docs/CONTRIBUTING.md` for the workflow, `docs/MASTER_PLAN.md` for what we are
+Read: `docs/CHALLENGE.md` for the brief and judging criteria, `docs/CONTRIBUTING.md` for the workflow, `docs/MASTER_PLAN.md` for what we are
 building, `docs/SYSTEM_MAP.md` for who owns what. Agents: `AGENTS.md` first.
 
 ## Conventions

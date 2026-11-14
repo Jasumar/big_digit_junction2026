@@ -1,6 +1,6 @@
 # T007 — Walking skeleton (M1)
 
-**Owner:** `TODO` **Status:** todo
+**Owner:** `TODO` **Status:** review (built in MVP, see Decisions.md)
 **Branch:** `task/t007-walking-skeleton`
 
 ## Goal

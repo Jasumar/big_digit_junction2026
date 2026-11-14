@@ -62,8 +62,8 @@ Read as intended, not as drawn (the diagram leaves these implicit — confirm in
 | `apps/client/` | Client device / Backend | `TODO` |
 | `apps/bank-backend/` | S-pankki backend | `TODO` |
 | `apps/bank-backend/calculation/` | Calculation tools | as `apps/bank-backend/` |
-| `apps/ai/` | Local AI model | `TODO` |
-| `packages/cloud/` | Cloud (client data) | `TODO` |
+| `apps/ai/` | Local AI model — a hosted API for the challenge; may be self-hosted at S-Bank | `TODO` |
+| `packages/cloud/` | Cloud: the platform holding all client data (e.g. BigQuery); here the S-pankki mock data | `TODO` |
 | `packages/contracts/` | shapes on every edge | `TODO` |
 
 An unowned module is one nobody may change without asking.
@@ -102,6 +102,12 @@ a local edit (rules: `docs/CONTRIBUTING.md` §Shared surfaces).
 
 ## Undecided
 
-`TODO`: stack per app, transport between them, which model and runtime, what "cloud"
-is for the demo, where each part runs, what is mocked. Each gets a line here when
-decided — and a line in `docs/MASTER_PLAN.md` §Decision log.
+Decided for the MVP in `docs/tasks/Decisions.md`: Python stdlib backend, plain-JS UI,
+local SQLite standing in for the cloud data platform, HTTP between UI and backend, in-process calls for AI and
+calculation, stub AI.
+
+AI: a hosted API for the challenge, behind `apps/ai/provider.py` so S-Bank could swap in
+a self-hosted model; one model answers in the user's language. Still open: which API
+provider and model; real authentication. Hosting the cloud is
+deferred (team keeps the local stand-in); notes for later in
+`packages/cloud/README.md` §Hosting later.

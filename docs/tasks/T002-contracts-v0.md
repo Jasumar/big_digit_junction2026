@@ -1,6 +1,6 @@
 # T002 — Contracts v0 for every edge
 
-**Owner:** `TODO` **Status:** todo
+**Owner:** `TODO` **Status:** review (built in MVP, see Decisions.md)
 **Branch:** `task/t002-contracts-v0`
 
 ## Goal

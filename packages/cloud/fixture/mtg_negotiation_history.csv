@@ -1,0 +1,25 @@
+mortgage_customer_id,timestamp,event_type,property_id,property_type,property_price_estimate,loan_amount,equity_amount,collateral_type,collateral_value,collateral_status,decision,rejection_reason,expense_type,expense_amount,note
+C0630,17MAY26:00:00:00,application_created,,,,,,,,,,,,,The customer started a mortgage application.
+C0630,18MAY26:22:49:21,customer_contact,,,,,,,,,,,,,"The customer contacted the bank to discuss the mortgage, financing needs, affordability, loan terms, or the property under consideration."
+C0630,20MAY26:15:00:38,property_added,P0630_01,apartment,169000,,,,,,,,,,"The customer added a property to the mortgage application and reviewed how it fits the financing plan. The estimated property price is EUR 169,000."
+C0630,23MAY26:07:19:17,property_price_updated,P0630_01,apartment,176000,,,,,,,,,,"The property price estimate was updated and the financing need was reassessed. The updated property price estimate is EUR 176,000."
+C0630,24MAY26:10:45:30,customer_contact,P0630_01,,176000,,,,,,,,,,"The customer contacted the bank to discuss the mortgage, financing needs, affordability, loan terms, or the property under consideration."
+C0630,29MAY26:01:10:14,customer_contact,,,,,,,,,,,,,"The customer contacted the bank to discuss the mortgage, financing needs, affordability, loan terms, or the property under consideration."
+C0630,29MAY26:21:29:36,property_added,P0630_02,detached_house,406000,,,,,,,,,,"The customer added a property to the mortgage application and reviewed how it fits the financing plan. The estimated property price is EUR 406,000."
+C0630,01JUN26:21:25:59,customer_contact,P0630_02,,406000,,,,,,,,,,"The customer contacted the bank to discuss the mortgage, financing needs, affordability, loan terms, or the property under consideration."
+C0630,03JUN26:14:14:01,customer_contact,,,,,,,,,,,,,"The customer contacted the bank to discuss the mortgage, financing needs, affordability, loan terms, or the property under consideration."
+C0630,06JUN26:02:39:55,property_added,P0630_03,terraced_house,199000,,,,,,,,,,"The customer added a property to the mortgage application and reviewed how it fits the financing plan. The estimated property price is EUR 199,000."
+C0630,07JUN26:15:40:06,property_price_updated,P0630_03,terraced_house,188000,,,,,,,,,,"The property price estimate was updated and the financing need was reassessed. The updated property price estimate is EUR 188,000."
+C0630,09JUN26:22:58:38,customer_contact,P0630_03,,188000,,,,,,,,,,"The customer contacted the bank to discuss the mortgage, financing needs, affordability, loan terms, or the property under consideration."
+C0630,10JUN26:14:40:32,loan_calculation,P0630_03,terraced_house,188000,175000,13000,,,,,,,,"A mortgage calculation was prepared and affordability was reviewed. Requested loan amount: EUR 175,000. Equity amount: EUR 13,000."
+C0630,11JUN26:20:12:10,income_information_received,P0630_03,,188000,,,,,,,,,,The requested income information was received and reviewed for the mortgage application.
+C0630,14JUN26:05:43:10,expense_recorded,P0630_03,,188000,,,,,,,,existing_loan,0,An expense related to the mortgage assessment was recorded: existing loan. Amount: EUR 0.
+C0630,16JUN26:09:55:41,expense_recorded,P0630_03,,188000,,,,,,,,renovation,20000,"An expense related to the mortgage assessment was recorded: renovation. Amount: EUR 20,000."
+C0630,19JUN26:01:16:30,expense_recorded,P0630_03,,188000,,,,,,,,valuation_fee,450,An expense related to the mortgage assessment was recorded: valuation fee. Amount: EUR 450.
+C0630,19JUN26:17:17:34,collateral_added,P0630_03,terraced_house,188000,,,apartment,,pending,,,,,Collateral was added to the mortgage application.
+C0630,20JUN26:02:18:24,collateral_valuation,P0630_03,,188000,,,apartment,129000,approved,,,,,"The collateral value was assessed for the mortgage application. Collateral value: EUR 129,000."
+C0630,20JUN26:13:56:31,additional_collateral_requested,P0630_03,,188000,175000,13000,other_apartment,,pending,,,,,Additional collateral was requested or discussed as part of the mortgage assessment.
+C0630,22JUN26:22:24:56,document_received,P0630_03,,188000,,,,,,,,,,A requested document was received and added to the mortgage application.
+C0630,25JUN26:13:58:44,customer_contact,P0630_03,,188000,175000,13000,,,,,,,,"The customer contacted the bank to discuss the mortgage, financing needs, affordability, loan terms, or the property under consideration."
+C0630,27JUN26:00:18:51,loan_decision,P0630_03,terraced_house,188000,175000,13000,apartment,129000,approved,rejected,insufficient_equity,,,The mortgage application was rejected. Rejection reason: insufficient equity.
+C0630,28JUN26:21:53:30,customer_contact,P0630_03,,188000,175000,13000,,,,rejected,,,,"The customer contacted the bank to discuss the mortgage, financing needs, affordability, loan terms, or the property under consideration."

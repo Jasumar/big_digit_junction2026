@@ -1,6 +1,6 @@
 # T003 — Mock client data and the first calculation tool
 
-**Owner:** `TODO` **Status:** todo
+**Owner:** `TODO` **Status:** review (built in MVP, see Decisions.md)
 **Branch:** `task/t003-cloud-mock-and-first-tool`
 
 ## Goal

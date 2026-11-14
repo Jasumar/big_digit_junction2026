@@ -1,12 +1,16 @@
 # apps/ai
 
 **Local AI model** in the architecture (`docs/SYSTEM_MAP.md`). Turns a client command
-plus calculation results into an answer and insights. **Not scaffolded** — model,
-runtime and hosting undecided.
+plus calculation results into an answer and insights. **Stub only** so far — a
+rule-based, English-only provider that works offline.
 
-"Local" means the model runs on infrastructure we control, so client data is not sent
-to a third-party model API. What that means for the demo is an open question in
-`docs/MASTER_PLAN.md`.
+**Hosting:** for the challenge we use a **hosted AI API** (provider still to be
+chosen). S-Bank itself may run **self-hosted** models in production; that is what the
+diagram's "local" means. The provider interface below is the seam: switching from an API
+to a self-hosted model changes one file, nothing else. What reaches the AI is the
+customer's question and **aggregated tool results** (totals, shares, dates), never raw
+transaction rows; with an API those results leave our infrastructure, which is
+acceptable here because the data is synthetic.
 
 Owner: `TODO` (`docs/SYSTEM_MAP.md`)
 
@@ -20,8 +24,35 @@ Owner: `TODO` (`docs/SYSTEM_MAP.md`)
 
 ## Setup
 
-`TODO`: how to get the model and runtime locally, how to start it, hardware needed.
+Stub needs nothing (`AI_PROVIDER=stub`, the default). **To wire a real model:** add
+`apps/ai/<name>_provider.py` with a `Provider` class (`name`, `plan`, `compose`, see
+`provider.py`) and register it in `get_provider`. `plan` receives the tool catalog in
+JSON-schema form, so provider tool-calling maps onto it directly; return
+`{"requests": [{"tool", "args"}]}` or `{"reply": ...}`. `compose` gets the results and
+returns `{"text", "insights": [{title, body, kind}]}`. The backend validates every
+request (step 3) and builds charts itself.
+
+## Language
+
+Most S-Bank customers write Finnish; Finland is bilingual, so Swedish matters too.
+Approach (`docs/tasks/Decisions.md` #24):
+
+- **One model, answering in the user's language.** No separate translation model:
+  translating English output doubles latency and cost, adds a failure point and makes
+  the coaching tone stiff. Large API models write good Finnish and Swedish.
+- **The model writes words; code formats numbers and dates.** Amounts arrive from the
+  tools as numbers and are formatted for the locale (`1 234,50 €`, `14.11.2026`), so
+  translation can never garble a figure.
+- **Glossary in the prompt** so the three baskets and key terms are always named the
+  same way. Draft, to be confirmed by a Finnish speaker (`docs/MASTER_PLAN.md` Q11):
+  pakolliset säännölliset menot · pakolliset yllättävät menot · arjen pikkukulut.
+- **Self-hosted later:** smaller open models are weaker in Finnish than large API
+  models — test Finnish quality first. Finnish-trained open models exist (e.g. Poro,
+  Viking from Silo AI / TurkuNLP; check their current state). Only add a translation
+  step if the chosen model is clearly worse in Finnish than English.
+- **The stub is English-only**: Finnish questions fall through to the help text. A real
+  provider fixes that.
 
 ## Conventions
 
-`TODO`: where prompts live, how tool calls are expressed, how to evaluate output.
+`stub_provider.py`: intents in `plan`, wording in `_<tool>` methods of `compose`.

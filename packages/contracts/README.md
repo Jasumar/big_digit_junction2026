@@ -14,11 +14,11 @@ Owner: `TODO` (`docs/SYSTEM_MAP.md`)
 
 | Edge | Steps | Shapes | Status |
 | --- | --- | --- | --- |
-| frontend ↔ client | — | UI action, rendered answer | `TODO` |
-| client ↔ bank-backend | 1, 7 | `Command`, `Answer` (text + insights) | `TODO` |
-| bank-backend ↔ ai | 2, 7 | command to model, model answer / insights, calculation request from the model | `TODO` |
-| bank-backend ↔ calculation | 3, 5 | `CalculationRequest`, `CalculationResult`, rejection | `TODO` |
-| calculation ↔ cloud | 4 | client data shape — owned by `packages/cloud/` | `TODO` |
+| frontend ↔ client | — | JS calls in `client.js`; answer rendered as-is | v0 |
+| client ↔ bank-backend | 1, 7 | `COMMAND`, `ANSWER` (text, insights, visuals, trace) | v0 |
+| bank-backend ↔ ai | 2, 6 | `PLAN` (requests or reply), then results in, `{text, insights}` out | v0 |
+| bank-backend ↔ calculation | 3, 5 | `CALCULATION_REQUEST`, `CALCULATION_RESULT` (ok / rejected / failed) | v0 |
+| calculation ↔ cloud | 4 | SQL over `packages/cloud/` tables | v0 |
 
 ## Changing it
 
@@ -27,4 +27,7 @@ every consumer in the same change, tell the team.
 
 ## Setup
 
-`TODO`: the mechanism — typed module, JSON Schema, spec file — and its commands.
+`schemas.py`: JSON-Schema-style dicts (`COMMAND`, `PLAN`, `CALCULATION_REQUEST`,
+`CALCULATION_RESULT`, `ANSWER`), `EXAMPLES`, and a small `validate()`; no dependencies.
+Tests check every example against its schema. The frontend consumes the same shapes
+as JSON.
