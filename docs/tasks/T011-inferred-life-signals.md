@@ -1,4 +1,4 @@
-# T011 — Life signals from transactions, standalone (not wired to the AI yet)
+# T011 — Life signals from transactions
 
 **Owner:** `TODO` **Status:** review
 **Branch:** `task/t011-inferred-life-signals`
@@ -11,10 +11,9 @@ everyday life, without asking: "you probably drive", "you commute by public tran
 month". Each guess carries its evidence (count, amount, period). The rules are checked
 against all 5,100 customers before anything reaches the AI.
 
-This task does **not** touch the tools the AI can call. Another task is changing the
-calculation tools right now. Wiring the signals into `spender_profile`, the visuals and
-the stub provider is the follow-up task (see "Next task" below), started once that work
-has merged.
+Built in two steps on one branch: first standalone (module, tests, report on all 5,100
+customers), then wired into `spender_profile` once the parallel tooling task (T010) had
+merged. The signals are returned inside `spender_profile`, not as a new tool.
 
 ## Allowed files
 
@@ -26,12 +25,17 @@ apps/bank-backend/tests/test_signals.py       (new)
 docs/MASTER_PLAN.md                           (index row only)
 ```
 
-Deliberately **not** allowed: `calculation/tools.py`, `calculation/README.md`,
-`present.py`, `apps/ai/*`, `tests/test_flow.py`. These are where the parallel tooling
-work is, or they belong to the wiring task. Documentation stays in the `signals.py`
-docstring until then.
+Wiring step (after T010 merged, 2026-11-14):
 
-**Shared surfaces touched:** none. `signals.py` reads data only through the existing
+```text
+apps/bank-backend/calculation/tools.py        (spender_profile returns `signals`; catalog text)
+apps/bank-backend/calculation/README.md       (document the signals)
+apps/bank-backend/present.py                  (evidence table, fi/sv strings)
+apps/ai/stub_provider.py                      (signals as hedged insights)
+apps/bank-backend/tests/test_flow.py          (tests)
+```
+
+**Shared surfaces touched:** none changed. `signals.py` reads data only through the existing
 read-only `cloud.store.Store` (`rows`/`one`) and imports `cloud.taxonomy` without
 changing either. `CATALOG` in `tools.py` is untouched, so the AI sees no change.
 
@@ -113,8 +117,10 @@ or fewer than 2% of customers. Tune the threshold, or drop the signal.
 - [x] `--report` runs on the full database; output below. No signal is flagged for the
       default period.
 - [x] p95 under 5 ms per customer on the full data (0.73 ms).
-- [x] `git diff main --stat`: `signals.py`, `test_signals.py`, this file, and one index
-      row in `MASTER_PLAN.md`. `tools.py`, `present.py` and `apps/ai/` are untouched.
+- [x] Wiring: `spender_profile` returns `signals` (`test_profile_signals`), too-short
+      periods give `[]`, charts show them in en/fi/sv without English left in fi, the stub
+      words them as "Looks like" (`test_profile_signals_reach_the_answer`). `spender_profile`
+      p95 on the full data: 1.12 ms.
 
 ## Verify
 
@@ -125,15 +131,15 @@ SPANKKI_DB=<path to full db> python3 -m unittest tests.test_signals.TestFullData
 python3 apps/bank-backend/calculation/signals.py --report    # needs the full DB (packages/cloud/README.md §Setup)
 ```
 
-## Next task (wiring), not part of this one
+## Wiring (done)
 
-Create it once the parallel tooling task has merged, and number it then:
-`spender_profile` adds `signals: life_signals(...)`, `present.py` shows them with their
-evidence, the stub answer words them as guesses ("looks like…"), and `test_flow.py`
-covers them. The tool-result `data` is an untyped object in `packages/contracts`, so no
-contract change is needed. The calculation README documents the signals then. Decide at
-that point whether `MCC_NAMES` moves to `packages/cloud/taxonomy.py`, a shared surface
-that would need agreement.
+`spender_profile` adds `signals` and a note telling the model to word them as guesses. The
+tool-result `data` is an untyped object in `packages/contracts`, so no contract change was
+needed. `present.py` shows an evidence table ("at least 12 purchases, €340"), the stub
+adds "Looks like: …" insights, and windows under 28 days return `signals: []`. Left for
+later: moving `MCC_NAMES` to `packages/cloud/taxonomy.py` (shared surface, needs
+agreement), and Finnish/Swedish signal labels in `glossary.py` (today only in
+`present.py`; the wording is a draft, Q11).
 
 ## Notes
 

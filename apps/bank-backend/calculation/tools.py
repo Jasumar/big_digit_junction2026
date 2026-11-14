@@ -13,6 +13,7 @@ from cloud.taxonomy import (
     SPEND_CATEGORIES, TRANSFER_CATEGORIES,
 )
 from contracts import PERIODS
+from .signals import life_signals_between
 
 DAYS_PER_MONTH = 30.4
 _SPEND_IN = "(%s)" % ",".join("'%s'" % c for c in SPEND_CATEGORIES)  # constants, not input
@@ -218,8 +219,13 @@ def spender_profile(store, customer_id, args):
         "peer_bucket_median_monthly": {b: _r(p["median_monthly"]) if p else None
                                        for b, p in peer_buckets.items()},
         "monthly_by_bucket": {b: _r(v / months) for b, v in buckets.items()},
+        "signals": life_signals_between(store, customer_id, c["start"], c["end"], c["days"]),
         "notes": "savings_rate_pct = share of income left after spending (money moved to "
-                 "investments counts as saved). bucket_shares_pct are shares of spending.",
+                 "investments counts as saved). bucket_shares_pct are shares of spending. "
+                 "signals are guesses about the customer's life from card purchases (empty "
+                 "for periods under 28 days); their counts are minimums, because some "
+                 "purchases carry no merchant code. Say 'looks like' or 'probably', never "
+                 "state them as fact.",
     }
 
 
@@ -551,7 +557,9 @@ CATALOG = [
      "parameters": _params(period=_PERIOD)},
     {"name": "spender_profile", "fn": spender_profile,
      "description": "What kind of spender the customer is: archetype, traits, savings rate, "
-                    "weekend and late-night habits, compared to peers of the same age.",
+                    "weekend and late-night habits, compared to peers of the same age, and "
+                    "signals: what the purchases suggest about the customer's everyday life "
+                    "(drives, commutes, eats out, travels, invests) with evidence.",
      "parameters": _params(period=_PERIOD)},
     {"name": "safe_to_spend", "fn": safe_to_spend,
      "description": "How much can safely be spent over the next days: balance plus expected "

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Life signals: what a customer's transactions suggest about their everyday life (T011).
 
-Standalone for now: nothing imports this module yet, and it is not in the tool CATALOG,
-so the AI cannot call it. A later task wires `life_signals` into `spender_profile`.
+`tools.spender_profile` returns these as `signals` (it is not a tool of its own). The
+module can still run alone: the `--report` command below needs nothing else.
 
     python3 apps/bank-backend/calculation/signals.py --report [--db PATH] [--period P]
 
@@ -83,6 +83,7 @@ SALARY_MONTH_SHARE = 0.75
 SALARY_GAP_DAYS = (25, 35)
 
 PERIOD_DAYS = {"last_30_days": 30, "last_90_days": 90, "last_12_months": 365}
+MIN_DAYS = 28  # shorter windows give no signals
 DAYS_PER_MONTH = 30.4
 
 
@@ -161,9 +162,17 @@ def customer_counts(store, customer_id, start, end):
             "salary_gap_days": float(statistics.median(gaps)) if gaps else None}
 
 
+def life_signals_between(store, customer_id, start, end, days):
+    """Signals for an explicit window (what `spender_profile` uses). Windows shorter than
+    MIN_DAYS give no signals: scaled to a week, one fuel purchase would read as "drives"."""
+    if days < MIN_DAYS:
+        return []
+    return signals_from_counts(customer_counts(store, customer_id, start, end), days)
+
+
 def life_signals(store, customer_id, period="last_90_days"):
     start, end, days = period_range(store, customer_id, period)
-    return signals_from_counts(customer_counts(store, customer_id, start, end), days)
+    return life_signals_between(store, customer_id, start, end, days)
 
 
 def report(store, period="last_90_days", out=sys.stdout):

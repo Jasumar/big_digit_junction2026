@@ -23,6 +23,22 @@ T = {
     "peers %s": {"fi": "ikätoverit %s", "sv": "jämnåriga %s"},
     "Kept of income": {"fi": "Tuloista jäi", "sv": "Kvar av inkomsten"},
     "Weekend share": {"fi": "Viikonloppujen osuus", "sv": "Andel på helger"},
+    # life signals (calculation/signals.py); Finnish/Swedish wording is a draft (Q11)
+    "What your spending suggests": {"fi": "Mitä kulutuksesi kertoo",
+                                    "sv": "Vad dina utgifter visar"},
+    "Evidence": {"fi": "Peruste", "sv": "Underlag"},
+    "at least %d purchases, %s": {"fi": "vähintään %d ostoa, %s", "sv": "minst %d köp, %s"},
+    "%d of %d months": {"fi": "%d / %d kuukautta", "sv": "%d av %d månader"},
+    "Probably drives a car": {"fi": "Todennäköisesti ajaa autoa", "sv": "Kör troligen bil"},
+    "Uses public transport": {"fi": "Käyttää julkista liikennettä", "sv": "Åker kollektivt"},
+    "Takes taxis": {"fi": "Käyttää takseja", "sv": "Åker taxi"},
+    "Eats out often": {"fi": "Syö usein ulkona", "sv": "Äter ofta ute"},
+    "Goes to events and the cinema": {"fi": "Käy tapahtumissa ja elokuvissa",
+                                      "sv": "Går på evenemang och bio"},
+    "Travels": {"fi": "Matkustaa", "sv": "Reser"},
+    "Invests regularly": {"fi": "Sijoittaa säännöllisesti", "sv": "Investerar regelbundet"},
+    "Has a regular monthly salary": {"fi": "Saa säännöllistä kuukausipalkkaa",
+                                     "sv": "Har regelbunden månadslön"},
     "Monthly spend vs peers (median)": {"fi": "Kuukausikulutus vs. ikätoverit (mediaani)",
                                         "sv": "Utgifter per månad vs. jämnåriga (median)"},
     "peers": {"fi": "ikätoverit", "sv": "jämnåriga"},
@@ -154,13 +170,27 @@ def _spender_profile(d, f):
     items.append({"label": f.t("Weekend share"), "value": f.pct(d["weekend_share_pct"])})
     peers = d["peer_bucket_median_monthly"]
     mine = d["monthly_by_bucket"]
-    return [{"type": "stats", "items": items},
-            {"type": "bars", "title": f.t("Monthly spend vs peers (median)"),
-             "items": [it for b in ("essentials", "necessities", "everyday") for it in (
-                 {"label": f.bucket(b), "value": mine[b], "display": f.eur(mine[b]),
-                  "tone": b},
-                 {"label": "  " + f.t("peers"), "value": peers[b] or 0,
-                  "display": f.eur(peers[b] or 0), "tone": "peer"})]}]
+    out = [{"type": "stats", "items": items},
+           {"type": "bars", "title": f.t("Monthly spend vs peers (median)"),
+            "items": [it for b in ("essentials", "necessities", "everyday") for it in (
+                {"label": f.bucket(b), "value": mine[b], "display": f.eur(mine[b]),
+                 "tone": b},
+                {"label": "  " + f.t("peers"), "value": peers[b] or 0,
+                 "display": f.eur(peers[b] or 0), "tone": "peer"})]}]
+    rows = [[f.t(s["label"]), _signal_evidence(s["evidence"], f)] for s in d.get("signals", [])]
+    if rows:
+        out.append({"type": "table", "title": f.t("What your spending suggests"),
+                    "columns": ["", f.t("Evidence")], "rows": rows})
+    return out
+
+
+def _signal_evidence(ev, f):
+    """Evidence text for one life signal. Purchase counts are minimums (some purchases
+    carry no merchant code), so they read 'at least'."""
+    if "count" in ev:
+        return f.t("at least %d purchases, %s") % (ev["count"], f.eur(ev["amount_eur"]))
+    n = ev.get("months_with_deposit", ev.get("months_with_salary", 0))
+    return f.t("%d of %d months") % (n, ev["months"])
 
 
 def _safe_to_spend(d, f):
