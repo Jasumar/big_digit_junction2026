@@ -115,7 +115,7 @@ class Provider:
 
     # ------------------------------------------------------------ the two calls
 
-    def plan(self, text, tools, history=None):
+    def plan(self, text, tools, history=None, context=None):
         messages = [{"role": "system", "content": PLAN_SYSTEM}]
         messages += _history(history)
         messages.append({"role": "user", "content": text})
@@ -137,13 +137,17 @@ class Provider:
             raise OpenRouterError("the model returned neither tool calls nor text")
         return {"requests": requests[:3], **({"reply": reply[:2000]} if reply else {})}
 
-    def compose(self, text, results, history=None):
+    def compose(self, text, results, history=None, context=None):
         messages = [{"role": "system", "content": COMPOSE_SYSTEM}]
         messages += _history(history)
         messages.append({"role": "user", "content":
                          "Customer question: %s\n\nCalculation results (JSON):\n%s\n\n"
                          "Answer in the same language as the customer question above." % (
                              text, json.dumps(results, ensure_ascii=False, indent=1))})
+        if (context or {}).get("limitation"):  # decided by the backend's scope check
+            messages[-1]["content"] += ("\n\nLimitation (say this plainly first; do not "
+                                        "present the results as covering it): %s"
+                                        % context["limitation"])
         message = self._chat(messages, response_format={"type": "json_object"})
         content = (message.get("content") or "").strip()
         parsed = _json_object(content)

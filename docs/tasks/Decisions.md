@@ -37,12 +37,39 @@ by raising it; the "Where" column says what to touch.
 | 30 | **Fail fast and warm up via `/health`:** a watchdog thread ends the Modal container as soon as vLLM exits; the smoke test polls `GET /health` (open, no key) before POSTing, because Modal answers requests waiting >~150 s with a 303 that POSTs cannot follow. | First deploy hit both: a gated-repo crash idled on the H100, and the POST failed with a 303 loop. | `apps/ai/modal_app.py` |
 | 31 | **FlashInfer sampler off** (`VLLM_USE_FLASHINFER_SAMPLER=0`) instead of a CUDA-devel base image. Plus a CPU-only `check_hf_access` function to test the HF token before paying for a GPU. | The slim image has no `nvcc`; the env var is the smallest fix. A wrong token otherwise only shows up after a GPU cold start. | `apps/ai/modal_app.py` |
 
+| 32 | **Evaluation by simple automatic checks** (tool, language by word lists, numbers present in results, forbidden strings, foreign basket terms, money format) on 20 fixed questions, plus reading answers. No LLM-as-judge. | Cheap, repeatable, explainable; meaning errors still need a human read. | `apps/ai/eval/` |
+| 33 | **One shared rule block in both prompts** + a glossary table; the model translates labels using stable keys (`archetype_key`, category names, bucket keys) instead of the tools returning translated text. | Keeps tools language-neutral; one place to change terms. | `apps/ai/llm_provider.py`, `packages/cloud/glossary.py` |
+| 34 | **Tool results carry short `notes`** explaining fields models misread (safe per day vs past spending; shares of spending vs income). Additive field; charts and stub ignore it. | Seen in Gemma answers during evaluation. | `calculation/tools.py` |
+
+| 35 | **Money format is fixed in code, not trusted to the model:** compose returns `lang`; `format_money` rewrites euro amounts to "€1,879" (en) or "1 879 €" (fi/sv) and rounds amounts of 10 € or more to whole euros. | Gemma ignored the format rule in 3 of 5 English answers; code is deterministic. | `apps/ai/llm_provider.py` |
+
+| 36 | **Charts follow the answer language.** The AI's compose step reports `lang`; the backend builds chart labels and money/percent/date formats for it; `lang` is added to the answer contract (optional, additive). The glossary moved from `apps/ai/` to `packages/cloud/glossary.py` so prompts and charts share one table. Home card and other fixed UI text stay English for now. | Finnish answers came with English charts. | `present.py`, `orchestrator.py`, `contracts/schemas.py`, `cloud/glossary.py` |
+
+| 37 | **Planner reports coverage** (`full`/`partial`/`none`) **and a limitation**; the answer gets an optional `notice` (and `data_as_of`). Additive to the PLAN and ANSWER contracts. | Gemma silently substituted questions it could not answer. | `contracts/schemas.py`, `orchestrator.py`, `llm_provider.py`, `app.js` |
+| 38 | **Runtime number check:** one model retry with the unbacked numbers, then the backend removes sentences/insights containing numbers not in the tool results; a safe sentence replaces an empty text. Small numbers (≤31) and labelled examples in no-tool replies are exempt. | Invented figures (e.g. "357 €" with no tool run) must never reach a customer. | `apps/ai/grounding.py`, `orchestrator.py` |
+| 39 | **Rules narrowed and capabilities listed:** own investment/savings transfers are data, not advice; questions about the data period are in scope; the prompt states what the tools cannot do. | The stricter T010 rules refused "how much have I invested?" and "what month is this?". | `apps/ai/llm_provider.py` |
+| 40 | **Explore defaults to `direction: all` for income/transfer categories** (was `spend`, which returned 0 €). | Bug found by probing: investments showed as 0 €. | `calculation/tools.py` |
+
+| 41 | **Keyword scope check in the backend** adds a notice for unsupported asks when the model did not; this month and last month (relative to `data_as_of`) count as supported. False notices are accepted as harmless; a missing notice misleads. | Gemma ignored the capability list for "March?", year comparisons and budgets. | `apps/bank-backend/scope.py` |
+| 42 | **Merchant ids: no filter for the model, redacted in text, "bills and transfers" label** for rows without a merchant. | Gemma mapped "Prisma" to a guessed merchant code and quoted codes as "subscriptions". | `calculation/tools.py`, `scope.py`, `present.py` |
+
+| 43 | **Unknown tool arguments are dropped before approval** (noted in the trace); `customer_id` and invalid values are still rejected. Model limitations are ignored except for no-tool replies — notices come from the scope check. | Gemma added `"type": "category"` to valid requests; the strict rejection then read as "I can't" to the customer ("last month" refused). | `approval.py`, `orchestrator.py` |
+| 44 | **`spending_breakdown` lists every spending category, zeros included**; charts skip zero rows. | A missing row read as "unknown"; 0 € is an answer. | `calculation/tools.py`, `present.py` |
+
+| 45 | **One-weekday filter** (`weekday: monday…sunday`) in `explore_transactions`; the scope check no longer flags weekday questions. | "How much on Fridays?" got weekday/weekend substitutes. | `calculation/tools.py`, `scope.py` |
+| 46 | **Day/time analysis and "biggest purchase" count card purchases only** (weekday, weekend, time of day, grouping by day/weekday/hour, metric max); `include_bills: true` brings rent and bills back; plain totals still include them. Results carry `purchases_only` and a note. | A 539 € rent payment on a Saturday made "Saturday" the biggest spending day and rent the "biggest purchase". | `calculation/tools.py` |
+| 47 | **"Night" = 22:00–06:00 everywhere** (explore filter, hour bands, spender profile); evening = 18–22. | Two tools disagreed (22–05 vs 00–06): 62 € or 325 € for the same customer. | `calculation/tools.py`, `present.py` |
+| 48 | **ISO dates in answer text are rewritten** to "30.9.2026" (fi/sv) or "30 Sep 2026" (en), like money. | Gemma copied "2025-10-01–2026-09-30" from the results. | `apps/ai/llm_provider.py` |
+| 49 | **One re-plan when approval rejects a request for a fixable reason** (wrong value, wrong tool), with the reasons sent back to the model; `customer_id` rejections never get a retry. | Gemma sometimes sent an invalid category ("Investments") and the answer became "your request was not in the right format". | `orchestrator.py`, `llm_provider.py` |
+
+| 50 | **A value sent as a one-item list is unwrapped** before validation (`["Invest Deposit"]` → `"Invest Deposit"`); longer lists are still rejected. | Gemma wrapped the category in a list; approval rejected it and the retry repeated it. | `approval.py` |
+
 ## Known limits
 
 - Stub understands English keywords only; Finnish questions and anything outside its
   patterns get the help text.
-- UI, chart labels and category names are English only; money is formatted the English
-  way (`€1,234`).
+- The home card, suggestion chips and other fixed UI text are English only (answer
+  charts follow the answer language since #36).
 - Merchants are synthetic ids (`MRC-RES-0018`), so "top merchants" show ids, not names.
 - Safe-to-spend assumes steady habits; no one-off events, no multiple accounts (data has one per customer).
 - No streaming, no persistence of chat history, no automated tests for the browser UI

@@ -38,6 +38,10 @@ PLAN = {  # what AI.plan() returns
     "properties": {
         "requests": {"type": "array", "maxItems": 3, "items": CALCULATION_REQUEST},
         "reply": {"type": "string", "maxLength": 2000},  # direct answer, no calculation
+        # can the tools answer exactly what was asked? partial/none -> limitation says why
+        "coverage": {"type": "string", "enum": ["full", "partial", "none"]},
+        "limitation": {"type": "string", "maxLength": 500},
+        "lang": {"type": "string", "enum": ["en", "fi", "sv"]},  # language of the question
     },
 }
 
@@ -85,6 +89,11 @@ ANSWER = {
                                      "note": {"type": "string"}}},
         },
         "provider": {"type": "string"},
+        # language of the answer; the charts use the same language
+        "lang": {"type": "string", "enum": ["en", "fi", "sv"]},
+        # shown above the answer when the question could only be partly answered
+        "notice": {"type": "string"},
+        "data_as_of": {"type": "string"},  # last date in the customer's data
     },
 }
 

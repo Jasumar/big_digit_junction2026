@@ -91,7 +91,7 @@ class Provider:
     name = "stub"
 
     # ------------------------------------------------------------ step 2
-    def plan(self, text, tools, history=None):
+    def plan(self, text, tools, history=None, context=None):
         t = text.lower()
         period = _period(text)
         p = {"period": period} if period else {}
@@ -140,7 +140,7 @@ class Provider:
         return {"requests": [], "reply": HELP}
 
     # ------------------------------------------------------------ step 6
-    def compose(self, text, results, history=None):
+    def compose(self, text, results, history=None, context=None):
         parts, insights = [], []
         for r in results:
             if not r["ok"]:
@@ -153,7 +153,7 @@ class Provider:
                 insights += ins
         if not parts:
             parts.append(HELP)
-        return {"text": " ".join(parts), "insights": insights}
+        return {"text": " ".join(parts), "insights": insights, "lang": "en"}
 
     def _spending_breakdown(self, d):
         top = d["categories"][0] if d["categories"] else None
