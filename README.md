@@ -4,8 +4,9 @@ Scaffold for **Junction 2026** (S-pankki). Working idea: a client asks a questio
 gives a command, a locally hosted AI model answers with insights, backed by
 calculations over the client's own data.
 
-Status: **working MVP** — an S-pankki money coach over the hackathon transaction data,
-with a rule-based AI stub ready to be swapped for a real provider. Choices made while
+Status: **working MVP** — a mobile-first S-pankki money coach over the full hackathon
+transaction data. The AI is Gemma 3 27B on Modal (or OpenRouter, or an offline stub),
+answering in Finnish, Swedish or English. Demo plan: `docs/DEMO.md` (local only for now, gitignored). Choices made while
 building it: `docs/tasks/Decisions.md`.
 
 ## Structure

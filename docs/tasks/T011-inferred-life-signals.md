@@ -1,6 +1,6 @@
 # T011 — Life signals from transactions
 
-**Owner:** `TODO` **Status:** review
+**Owner:** `TODO` **Status:** merged
 **Branch:** `task/t011-inferred-life-signals`
 
 ## Goal

@@ -1,6 +1,6 @@
 # T009 — OpenRouter as a second real provider
 
-**Owner:** `TODO` **Status:** review
+**Owner:** `TODO` **Status:** merged
 **Branch:** `task/t009-openrouter-provider`
 
 ## Goal

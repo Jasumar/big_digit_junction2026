@@ -103,8 +103,9 @@ a local edit (rules: `docs/CONTRIBUTING.md` §Shared surfaces).
 ## Undecided
 
 Decided for the MVP in `docs/tasks/Decisions.md`: Python stdlib backend, plain-JS UI,
-local SQLite standing in for the cloud data platform, HTTP between UI and backend, in-process calls for AI and
-calculation, stub AI.
+local SQLite standing in for the cloud data platform, HTTP between UI and backend,
+in-process calls for AI and calculation; AI providers: Gemma on Modal, OpenRouter, or the
+offline stub.
 
 AI: Gemma 3 27B on Modal (vLLM, OpenAI-compatible API) for the challenge, behind
 `apps/ai/provider.py` so S-Bank could swap in its own self-hosted model; one model

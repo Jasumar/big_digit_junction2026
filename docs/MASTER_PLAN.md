@@ -1,8 +1,8 @@
 # MASTER_PLAN
 
 What we build and who builds it. Architecture: `SYSTEM_MAP.md`. Workflow:
-`CONTRIBUTING.md`. Architecture, stack and a working MVP are in place (see Decision log
-and `tasks/Decisions.md`); the real AI provider and the demo story are not.
+`CONTRIBUTING.md`. Architecture, stack, a working MVP with a real AI provider (Gemma on
+Modal) and a draft demo story (`docs/DEMO.md`, kept local and gitignored for now) are in place. What is left: "Next up" below.
 
 ## Challenge
 
@@ -17,27 +17,30 @@ Proposed from the brief (`CHALLENGE.md`); confirm as a team.
 - **Must have** (demo fails without it): chat with your own money on a phone-width
   UI; the three baskets; where did my money go; what kind of spender am I; safe to
   spend this week; what-if ("cut dining out by 20%"); a real AI provider behind the
-  approval step. *Built, except the real AI provider.*
-- **Should have:** safe to save; open-data benchmarks (Statistics Finland); MCC-level
-  questions ("taxis last month"); plain-language explanations of financial concepts.
+  approval step. *All built (T001–T014).*
+- **Built beyond the must-haves:** Finnish/Swedish/English UI and answers (T012), follow-up
+  questions (T013), life signals (T011), MCC subcategories such as taxis (T014), a safety
+  net against invented numbers and silent substitution (T010).
+- **Should have, not built:** safe to save; open-data benchmarks (Statistics Finland);
+  tested plain-language explanations of financial concepts.
 - **Out of scope:** mortgage features (the data is loaded, no tool uses it), real login, multi-bank (PSD2) view, hosted cloud,
   native app.
 
 ## Demo
 
-`TODO`: the 60–90s story, as a user walking through it, naming what is live and what is
-faked. It is the tiebreaker for every "should we build this?" question.
+Draft 90-second story, checklist and fallback plan: `docs/DEMO.md` (local only for now,
+gitignored; ask the team lead for a copy) — every question
+in it was dry-run on Gemma with the full data. Confirm it as a team; it is the tiebreaker
+for every "should we build this?" question.
 
 ## Milestones
 
-| ID | Milestone | Exit criterion |
-| --- | --- | --- |
-| M0 | Scaffold | `bash scripts/check.sh` green; a fresh clone works |
-| M1 | Walking skeleton | one command travels steps 1–7 (`SYSTEM_MAP.md` §Flow) through every module, stubs allowed |
-| M2 | MVP | must-have scope works end to end |
-| M3 | Demo polish | the demo runs twice in a row, unattended |
-
-`TODO`: real times for M1–M3.
+| ID | Milestone | Exit criterion | Status |
+| --- | --- | --- | --- |
+| M0 | Scaffold | `bash scripts/check.sh` green; a fresh clone works | done |
+| M1 | Walking skeleton | one command travels steps 1–7 (`SYSTEM_MAP.md` §Flow) through every module, stubs allowed | done (T007) |
+| M2 | MVP | must-have scope works end to end | done (T008–T014) |
+| M3 | Demo polish | the demo runs twice in a row, unattended | open — `DEMO.md` checklist |
 
 ## Tasks
 
@@ -45,41 +48,43 @@ Index of `docs/tasks/`. Keep it short; one owner per task.
 
 | Task | Owner | Area | Depends on | Status |
 | --- | --- | --- | --- | --- |
-| [T001](tasks/T001-choose-stack.md) | `TODO` | all | — | review |
-| [T002](tasks/T002-contracts-v0.md) | `TODO` | contracts | T001 | review |
-| [T003](tasks/T003-cloud-mock-and-first-tool.md) | `TODO` | cloud, calculation | T002 | review |
-| [T004](tasks/T004-bank-backend-skeleton.md) | `TODO` | bank-backend | T002 | review |
-| [T005](tasks/T005-local-ai-spike.md) | `TODO` | ai | T001 | review |
-| [T006](tasks/T006-frontend-client-skeleton.md) | `TODO` | frontend, client | T002 | review |
-| [T007](tasks/T007-walking-skeleton.md) | `TODO` | all | T003–T006 | review |
+| [T001](tasks/T001-choose-stack.md) | `TODO` | all | — | merged |
+| [T002](tasks/T002-contracts-v0.md) | `TODO` | contracts | T001 | merged |
+| [T003](tasks/T003-cloud-mock-and-first-tool.md) | `TODO` | cloud, calculation | T002 | merged |
+| [T004](tasks/T004-bank-backend-skeleton.md) | `TODO` | bank-backend | T002 | merged |
+| [T005](tasks/T005-local-ai-spike.md) | `TODO` | ai | T001 | merged |
+| [T006](tasks/T006-frontend-client-skeleton.md) | `TODO` | frontend, client | T002 | merged |
+| [T007](tasks/T007-walking-skeleton.md) | `TODO` | all | T003–T006 | merged |
 | [T008](tasks/T008-local-ai-modal.md) | `TODO` | ai | T007 | merged |
 | [T009](tasks/T009-openrouter-provider.md) | `TODO` | ai | T008 | merged |
 | [T010](tasks/T010-improve-ai-rules.md) | `TODO` | ai | T008 | merged |
-| [T011](tasks/T011-inferred-life-signals.md) | `TODO` | calculation | T003 | review |
+| [T011](tasks/T011-inferred-life-signals.md) | `TODO` | calculation | T003 | merged |
 | [T012](tasks/T012-ui-language.md) | `TODO` | frontend | T010 | merged |
 | [T013](tasks/T013-follow-up-questions.md) | `TODO` | ai, frontend | T010 | merged |
-| [T014](tasks/T014-mcc-codes.md) | `TODO` | cloud, calculation | T011 | review |
+| [T014](tasks/T014-mcc-codes.md) | `TODO` | cloud, calculation | T011 | merged |
+| T015 (docs refresh + local demo plan) | `TODO` | docs | T014 | review |
 
 Order: T001 first (everyone, short). Then T002. Then T003, T004, T005, T006 in
 parallel — one person each. T007 joins them into M1. All seven were built together in
-the MVP on branch `task/t000-first-mvp` and await review.
+the MVP on branch `task/t000-first-mvp` (merged in PR #3).
 
-**Next up** (no task files yet; create one before starting):
+**Next up** (no task files yet; create one before starting), most important first:
 
-1. Logic fix left from probing: share of income (shares are of spending today).
-2. Missing tools, most asked first: custom date ranges and calendar months, a list of
-   individual transactions, monthly averages, year-over-year, balance history. Until
-   then the coach says it cannot (safety net, T010). Done in T010: one weekday filter,
-   rent/bills out of day/time analysis, one "night" definition.
-3. Confirm the Finnish/Swedish glossary with native speakers (Q11); rerun
-   `apps/ai/eval/run_eval.py` after any prompt or model change.
-2. Safe-to-save tool.
-3. MCC filter in `explore_transactions` (taxis, pharmacies…).
-4. Open-data benchmarks from Statistics Finland.
-5. Finnish/Swedish/English: string files for fixed text, category-name table, locale
-   number/date formatting, glossary in the AI prompt (`apps/ai/README.md` §Language).
-6. Agree the demo story below, then polish for it (M3). Idea: ask the same question in
-   Finnish and in English and get native answers in both.
+1. **Demo (M3):** confirm `DEMO.md` as a team, run it twice in a row, record a backup
+   video, decide the demo laptop (Q8).
+2. **Native check of Finnish/Swedish wording** (Q11): glossary, UI text, chips.
+3. **Rotate the endpoint key** before the demo (`apps/ai/README.md` §Team access) and
+   rerun `apps/ai/eval/run_eval.py` on Gemma (last full run was before T013/T014).
+4. **Safe-to-save** tool — the brief names it next to safe-to-spend.
+5. **Open-data benchmarks** from Statistics Finland (today: the dataset's own age bands).
+6. **Missing tools** (the coach says it can't today): calendar months and custom date
+   ranges, a list of individual transactions, monthly averages, year-over-year, balance
+   history, share of income (shares are of spending today).
+7. **Robustness:** Gemma sometimes says a subcategory total "includes all" purchases and
+   once misdated the safe-to-spend week; the offline stub is English-only.
+8. **Housekeeping:** decide on `feat/Verda` (CuriousGeorg1, WIP: grounding and provider
+   tests — may overlap the T010 number check); owners can delete `feat/t009` and merged
+   `task/…` branches; add a Node setup step to CI so the UI text check always runs.
 
 ## Open questions
 
@@ -127,7 +132,8 @@ Append-only. One line per decision others must not silently reverse.
   before the demo; the database is not the bottleneck (<5 ms per tool).
 - GPU cost: an H100 bills while running → scale-to-zero after 10 min by default; only
   keep one warm during the demo.
-- The stub only understands English keywords; Finnish questions get the help text →
-  wire the real provider before showing Finnish.
+- If Gemma is down, the offline stub answers — English only → switch the UI to EN, or
+  play the backup video (`DEMO.md` §If something breaks).
+- The endpoint key was shown in a chat transcript → rotate it before the demo.
 
 Add risks as they appear, each with its fallback.

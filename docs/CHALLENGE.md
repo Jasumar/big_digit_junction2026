@@ -83,7 +83,7 @@ All four are fetched by `python3 packages/cloud/fetch_data.py` and loaded by
 
 ## Where the MVP stands against the brief
 
-As of the first MVP (`docs/tasks/Decisions.md`):
+As of T014 (2026-11-14; choices in `docs/tasks/Decisions.md`):
 
 | Brief item | Status |
 | --- | --- |
@@ -92,10 +92,13 @@ As of the first MVP (`docs/tasks/Decisions.md`):
 | Safe to spend this week | done — `safe_to_spend` |
 | Free exploration (MyData) | done — `explore_transactions` |
 | Benchmarks | partly — peers from the dataset's own age bands, **no open data yet** |
-| "Taxis last month" | done — `subcategory: taxi` by merchant category code (T014); totals are minimums (some purchases have no code) |
+| "Taxis last month" | done — `subcategory: taxi` by merchant category code (T014); about 5% of purchases have no code (not shown to users, #60) |
 | What-if ("reduce dining out by 20%") | done — `simulate_change` (category or basket, ±%, horizon) |
 | Safe to save | **missing** |
-| Plain-language explanations of concepts | **missing** beyond answer text; depends on the real AI provider |
+| Plain-language explanations of concepts | partly — Gemma explains concepts ("korkoa korolle", the three baskets); not systematically tested |
 | Real conversational AI | done — Gemma 3 27B on Modal answers in Finnish and English (T008); stub as offline fallback |
-| Finnish / Swedish | partly — Gemma answers in the user's language; UI, charts and stub are still English-only |
+| Finnish / Swedish | done — UI switch FI/SV/EN (T012), answers and charts in the user's language; offline stub is English-only |
+| Interactivity | done — tappable follow-up questions under answers (T013) |
+| "What kind of spender am I" depth | done — life signals from purchases with evidence (T011) |
+| Trust and safety | done — approval step, code check against invented numbers, honest "can't" answers (T010) |
 | Multi-bank view (bonus) | not started |
