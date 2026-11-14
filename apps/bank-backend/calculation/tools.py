@@ -153,7 +153,6 @@ def spending_breakdown(store, customer_id, args):
 def spender_profile(store, customer_id, args):
     period = args.get("period", "last_90_days")
     c = _ctx(store, customer_id, period)
-    cust = store.customer(customer_id)
     agg = store.one(
         "SELECT COALESCE(-SUM(amount),0) AS total, COUNT(*) AS n,"
         " COALESCE(-SUM(CASE WHEN weekday >= 5 THEN amount END),0) AS weekend,"
@@ -174,8 +173,6 @@ def spender_profile(store, customer_id, args):
     weekend_share = agg["weekend"] / purchase_total if purchase_total else 0.0
     late_share = agg["late"] / purchase_total if purchase_total else 0.0
     savings_rate = (income - total) / income if income else None
-    peer = store.peer(cust["age_band"], "total")
-    peer_buckets = {b: store.peer(cust["age_band"], "bucket:" + b) for b in BUCKET_LABELS}
 
     traits = []
     if savings_rate is not None:
@@ -214,11 +211,6 @@ def spender_profile(store, customer_id, args):
         "purchases_per_week": _r(agg["n"] / (c["days"] / 7.0), 1),
         "distinct_merchants": agg["merchants"],
         "top_category": max(cur, key=lambda k: cur[k]["amt"]) if cur else None,
-        "peer_group": {"age_band": cust["age_band"], "n": peer["n"] if peer else 0},
-        "peer_monthly_spend_median": _r(peer["median_monthly"]) if peer else None,
-        "diff_vs_peer_median": _r(total / months - peer["median_monthly"]) if peer else None,
-        "peer_bucket_median_monthly": {b: _r(p["median_monthly"]) if p else None
-                                       for b, p in peer_buckets.items()},
         "monthly_by_bucket": {b: _r(v / months) for b, v in buckets.items()},
         "signals": life_signals_between(store, customer_id, c["start"], c["end"], c["days"]),
         "notes": "savings_rate_pct = share of income left after spending (money moved to "
@@ -310,66 +302,59 @@ _CANDIDATES = ("Groceries", "Transportation", "Restaurants", "Entertainment", "L
                "Travel")
 
 
-def _benchmark_rows(store, customer_id, c, cust):
+def _usual_rows(store, customer_id, c):
+    """Monthly spend per category in the period vs the customer's OWN usual: their monthly
+    average over the 12 months before the period. Only this customer's transactions are
+    read — the coach never compares with other customers (T017, banking secrecy)."""
     cur = _spend_by_category(store, customer_id, c["start"], c["end"])
     months = c["days"] / DAYS_PER_MONTH
+    first = store.one("SELECT MIN(tx_date) AS d FROM transactions WHERE customer_id = ?",
+                      (customer_id,))["d"]
+    b_end = (_d(c["start"]) - dt.timedelta(days=1)).isoformat()
+    b_start = max((_d(c["start"]) - dt.timedelta(days=365)).isoformat(), first)
+    b_days = (_d(b_end) - _d(b_start)).days + 1
+    base = (_spend_by_category(store, customer_id, b_start, b_end) if b_days >= 28 else {})
+    b_months = b_days / DAYS_PER_MONTH if b_days >= 28 else None
     rows = []
     for cat in SPEND_CATEGORIES:
         mine = cur.get(cat, {"amt": 0.0})["amt"] / months
-        p = store.peer(cust["age_band"], cat)
+        usual = base.get(cat, {"amt": 0.0})["amt"] / b_months if b_months else None
         rows.append({
             "category": cat, "bucket": CATEGORY_BUCKET[cat], "monthly": _r(mine),
-            "peer_median": _r(p["median_monthly"]) if p else None,
-            "peer_average": _r(p["avg_monthly"]) if p else None,
-            "diff_vs_median": _r(mine - p["median_monthly"]) if p else None,
-            "diff_pct": _pct(mine - p["median_monthly"], p["median_monthly"])
-            if p and p["median_monthly"] else None})
-    return rows
-
-
-def peer_comparison(store, customer_id, args):
-    period = args.get("period", "last_90_days")
-    c = _ctx(store, customer_id, period)
-    cust = store.customer(customer_id)
-    rows = _benchmark_rows(store, customer_id, c, cust)
-    peer_total = store.peer(cust["age_band"], "total")
-    mine_total = sum(r["monthly"] for r in rows)
-    return {
-        **_period_info(c, period),
-        "peer_group": {"age_band": cust["age_band"], "n": peer_total["n"] if peer_total else 0,
-                       "description": "customers aged %s" % cust["age_band"]},
-        "monthly_spend": _r(mine_total),
-        "peer_median_monthly_spend": _r(peer_total["median_monthly"]) if peer_total else None,
-        "diff_vs_peer_median": _r(mine_total - peer_total["median_monthly"]) if peer_total else None,
-        "categories": rows,
-    }
+            "usual_monthly": _r(usual) if usual is not None else None,
+            "diff_vs_usual": _r(mine - usual) if usual is not None else None,
+            "diff_pct": _pct(mine - usual, usual) if usual else None})
+    usual_period = {"from": b_start, "to": b_end} if b_months else None
+    return rows, usual_period
 
 
 def savings_opportunities(store, customer_id, args):
     period = args.get("period", "last_90_days")
     c = _ctx(store, customer_id, period)
-    cust = store.customer(customer_id)
     months = c["days"] / DAYS_PER_MONTH
-    bench = {r["category"]: r for r in _benchmark_rows(store, customer_id, c, cust)}
+    rows, usual_period = _usual_rows(store, customer_id, c)
+    bench = {r["category"]: r for r in rows}
     income = _income(store, customer_id, c["start"], c["end"])
     spend = sum(r["monthly"] for r in bench.values())
 
     ideas = []
     for cat in _CANDIDATES:
         r = bench[cat]
-        excess = max(0.0, r["diff_vs_median"] or 0.0)
-        ideas.append({"category": cat, "monthly": r["monthly"], "peer_median": r["peer_median"],
-                      "above_peers_by": _r(excess), "potential_monthly": _r(0.5 * excess)})
+        excess = max(0.0, r["diff_vs_usual"] or 0.0)
+        ideas.append({"category": cat, "monthly": r["monthly"],
+                      "usual_monthly": r["usual_monthly"],
+                      "above_usual_by": _r(excess), "potential_monthly": _r(0.5 * excess)})
     ideas.sort(key=lambda i: -i["potential_monthly"])
     ideas = [i for i in ideas if i["potential_monthly"] >= 5][:3]
-    basis = "peer_gap"
-    if not ideas:  # already at or below peers: suggest a gentle trim of the biggest discretionary
+    basis = "above_usual"
+    if not ideas:  # at or below their own usual: suggest a gentle trim of the biggest extras
         basis = "gentle_trim"
         for cat in sorted(("Restaurants", "Entertainment", "Lifestyle", "Travel"),
                           key=lambda k: -bench[k]["monthly"])[:2]:
             if bench[cat]["monthly"] > 0:
                 ideas.append({"category": cat, "monthly": bench[cat]["monthly"],
-                              "peer_median": bench[cat]["peer_median"], "above_peers_by": 0.0,
+                              "usual_monthly": bench[cat]["usual_monthly"],
+                              "above_usual_by": 0.0,
                               "potential_monthly": _r(0.1 * bench[cat]["monthly"])})
     for i in ideas:
         merchants = store.rows(
@@ -384,7 +369,11 @@ def savings_opportunities(store, customer_id, args):
     total_potential = sum(i["potential_monthly"] for i in ideas)
     return {
         **_period_info(c, period), "basis": basis,
-        "peer_group": {"age_band": cust["age_band"]},
+        "usual_period": usual_period,
+        "notes": "usual_monthly is the customer's own monthly average in usual_period (the "
+                 "12 months before this period). Ideas are half of what they spend above "
+                 "their own usual, or a 10% trim (basis gentle_trim). There is no data "
+                 "about other customers.",
         "monthly_spend": _r(spend),
         "monthly_income": _r(income / months),
         "savings_rate_pct": _r(100 * (income - spend * months) / income, 1) if income else None,
@@ -585,7 +574,7 @@ CATALOG = [
      "parameters": _params(period=_PERIOD)},
     {"name": "spender_profile", "fn": spender_profile,
      "description": "What kind of spender the customer is: archetype, traits, savings rate, "
-                    "weekend and late-night habits, compared to peers of the same age, and "
+                    "weekend and late-night habits, and "
                     "signals: what the purchases suggest about the customer's everyday life "
                     "(drives, commutes, eats out, travels, invests) with evidence.",
      "parameters": _params(period=_PERIOD)},
@@ -595,12 +584,9 @@ CATALOG = [
                     "surprises and a buffer.",
      "parameters": _params(horizon_days={"type": "integer", "minimum": 1, "maximum": 31})},
     {"name": "savings_opportunities", "fn": savings_opportunities,
-     "description": "Where the customer could save more: categories above the peer median, "
+     "description": "Where the customer could save more: categories above their own usual "
+                    "(their 12 months before the period), "
                     "top merchants, concrete tips and the monthly and yearly potential.",
-     "parameters": _params(period=_PERIOD)},
-    {"name": "peer_comparison", "fn": peer_comparison,
-     "description": "Monthly spending per category versus the median of customers of the "
-                    "same age band.",
      "parameters": _params(period=_PERIOD)},
     {"name": "simulate_change", "fn": simulate_change,
      "description": "What-if: how much would be saved (or spent) per month, per year and "

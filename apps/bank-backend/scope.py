@@ -18,6 +18,16 @@ MONTHS = {  # month number -> stems
 }
 
 RULES = [  # (key, regex on lower-cased question)
+    # banking secrecy (T017): the coach has no data about other customers, not even
+    # aggregates, so any comparison with other people is declined
+    ("others", r"ikäis|ikätover|samanikäi|muihin (asiakk|ihmis|suomal|ikä)|muut (asiakkaat|"
+               r"ihmiset)|keskiverto|keskivert|keskimääräi\w* (suomalai|asiakas|ihmi|kotital)|"
+               r"mediaani|vertaudun muihin|vertautu\w* muihin|"
+               r"\bpeers?\b|others my age|people my age|my age group|other (people|customers|"
+               r"users)|average (person|customer|finn|household|user)|compared? (to|with) "
+               r"others|than others|median|"
+               r"jämnårig|andra i min ålder|andra kunder|andra människor|genomsnittlig\w* "
+               r"(kund|person|finländare|hushåll)|jämfört med andra"),
     ("date", r"\beilen\b|\byesterday\b|\bigår\b|\btoissapäivänä\b|\b\d{1,2}\.\s?\d{1,2}\.|"
              r"\b\d{1,2}\.\s?(päivä|tammi|helmi|maalis|huhti|touko|kesä|heinä|elo|syys|loka|"
              r"marras|joulu)"),
@@ -41,6 +51,9 @@ RULES = [  # (key, regex on lower-cased question)
 ]
 
 TEXT = {
+    "others": {"fi": "Näen vain sinun omat tietosi – en vertaa sinua muihin asiakkaisiin, en edes keskiarvoina. Voin verrata kulutustasi omaan aiempaan kulutukseesi.",
+               "sv": "Jag ser bara dina egna uppgifter – jag jämför dig inte med andra kunder, inte ens som genomsnitt. Jag kan jämföra dina utgifter med dina egna tidigare utgifter.",
+               "en": "I only see your own data — I don't compare you with other customers, not even as averages. I can compare your spending with your own earlier spending."},
     "month": {"fi": "En voi valita tiettyä kalenterikuukautta; näytän lähimmän saatavilla olevan jakson.",
               "sv": "Jag kan inte välja en viss kalendermånad; jag visar närmaste tillgängliga period.",
               "en": "I can't pick a specific calendar month; I'm showing the closest available period."},

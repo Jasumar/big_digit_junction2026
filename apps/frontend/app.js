@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 const LANG_KEY = "coach.lang";
 let t = makeT(LANGS.includes(localStorage.getItem(LANG_KEY)) ? localStorage.getItem(LANG_KEY) : DEFAULT_LANG);
 const TONE = { essentials: "var(--essentials)", necessities: "var(--necessities)",
-  everyday: "var(--everyday)", peer: "var(--peer)", good: "var(--good)", warn: "var(--warn)" };
+  everyday: "var(--everyday)", baseline: "var(--baseline)", good: "var(--good)", warn: "var(--warn)" };
 let customerId = null;
 let history = [];
 let customers = [];

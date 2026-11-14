@@ -91,7 +91,7 @@ As of T014 (2026-11-14; choices in `docs/tasks/Decisions.md`):
 | What kind of spender am I | done — `spender_profile` |
 | Safe to spend this week | done — `safe_to_spend` |
 | Free exploration (MyData) | done — `explore_transactions` |
-| Benchmarks | partly — peers from the dataset's own age bands, **no open data yet** |
+| Benchmarks | **dropped by design** (T017) — banking secrecy: no comparison with other customers, not even medians; the coach compares with the customer's own earlier spending instead. Open public statistics could be added later. |
 | "Taxis last month" | done — `subcategory: taxi` by merchant category code (T014); about 5% of purchases have no code (not shown to users, #60) |
 | What-if ("reduce dining out by 20%") | done — `simulate_change` (category or basket, ±%, horizon) |
 | Safe to save | **missing** |

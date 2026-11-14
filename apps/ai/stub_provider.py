@@ -117,8 +117,6 @@ class Provider:
             return {"requests": [{"tool": "spender_profile", "args": p}]}
         if re.search(r"save|saving|cut (back|down)|reduce|cheaper|economi", t):
             return {"requests": [{"tool": "savings_opportunities", "args": p}]}
-        if re.search(r"compare|average|others|peers|benchmark|typical|normal", t):
-            return {"requests": [{"tool": "peer_comparison", "args": p}]}
         if re.search(r"weekend|night|late|morning|evening", t) and not cat:
             args = dict(p)
             if "weekend" in t:
@@ -210,13 +208,6 @@ class Provider:
                         ev["months"]))
             label = s["label"][:1].lower() + s["label"][1:]
             ins.append({"title": "Looks like: %s" % label, "body": body, "kind": "info"})
-        pm = d.get("peer_monthly_spend_median")
-        if pm:
-            diff = d["monthly_spend"] - pm
-            ins.append({"title": "Versus people your age", "kind": "good" if diff <= 0 else "warn",
-                        "body": "You spend %s a month, %s %s the median of %s." % (
-                            eur(d["monthly_spend"]), eur(abs(diff)),
-                            "below" if diff <= 0 else "above", eur(pm))})
         return text, ins
 
     def _safe_to_spend(self, d):
@@ -252,34 +243,15 @@ class Provider:
         text = "You could free up around %s a month (%s a year)." % (
             eur(d["total_monthly_potential"]), eur(d["yearly_potential"]))
         if d["basis"] == "gentle_trim":
-            text += " You already spend less than most people your age, so these are gentle " \
+            text += " You already spend at or below your own usual, so these are gentle " \
                     "trims of your biggest extras."
         ins = []
         for i in d["ideas"]:
-            gap = ("%s above the median for your age group. " % eur(i["above_peers_by"])
-                   if i["above_peers_by"] else "")
+            gap = ("%s a month above your own usual. " % eur(i["above_usual_by"])
+                   if i["above_usual_by"] else "")
             ins.append({"title": "%s: save ~%s/month" % (i["category"],
                                                           eur(i["potential_monthly"])),
                         "kind": "tip", "body": gap + i["tip"]})
-        return text, ins
-
-    def _peer_comparison(self, d):
-        diff = d["monthly_spend"] - (d["peer_median_monthly_spend"] or 0)
-        text = "You spend %s a month; the median for %s is %s." % (
-            eur(d["monthly_spend"]), d["peer_group"]["description"],
-            eur(d["peer_median_monthly_spend"] or 0))
-        rows = [c for c in d["categories"] if c["diff_pct"] is not None
-                and abs(c["diff_vs_median"]) >= 30]
-        rows.sort(key=lambda c: -abs(c["diff_vs_median"]))
-        ins = [{"title": "%s %s peers" % (c["category"], "above" if c["diff_vs_median"] > 0
-                                           else "below"),
-                "kind": "warn" if c["diff_vs_median"] > 0 else "good",
-                "body": "%s a month vs median %s (%+.0f%%)." % (
-                    eur(c["monthly"]), eur(c["peer_median"]), c["diff_pct"])}
-               for c in rows[:3]]
-        if d["peer_median_monthly_spend"]:
-            text += " That is %s %s the median." % (eur(abs(diff)),
-                                                    "below" if diff <= 0 else "above")
         return text, ins
 
     def _simulate_change(self, d):
@@ -360,15 +332,6 @@ class Provider:
         return [{"kind": "clarify", "label": "Cut back on %s" % i["category"],
                  "prompt": "What if I cut %s by 20%%?" % i["category"]}
                 for i in d["ideas"][:2]]
-
-    def _followups_peer_comparison(self, d):
-        above = [c for c in d["categories"] if (c.get("diff_vs_median") or 0) > 0
-                 and c["category"] not in ("Housing", "Utilities")]
-        if not above:
-            return []
-        top = max(above, key=lambda c: c["diff_vs_median"])
-        return [{"kind": "explore", "label": "Cut %s by 20%%?" % top["category"],
-                 "prompt": "What if I cut %s by 20%%?" % top["category"]}]
 
     def _followups_simulate_change(self, d):
         return [{"kind": "explore", "label": "How could I save more?",

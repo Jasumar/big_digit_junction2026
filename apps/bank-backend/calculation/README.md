@@ -20,15 +20,14 @@ way unless `docs/MASTER_PLAN.md` §Decision log says otherwise.
 
 `CATALOG` in `tools.py` is the source of truth (names, descriptions, JSON-schema
 parameters); `describe_catalog()` is what the AI is shown. All read only the customer's
-own transactions plus the peer benchmark table.
+own transactions — nothing about other customers, not even averages (T017).
 
 | Tool | Answers |
 | --- | --- |
 | `spending_breakdown` | where did my money go: categories, three buckets, change vs before |
-| `spender_profile` | what kind of spender am I: archetype, traits, vs peers, and `signals` (see below) |
+| `spender_profile` | what kind of spender am I: archetype, traits, and `signals` (see below) |
 | `safe_to_spend` | what can I safely spend over N days |
-| `savings_opportunities` | how could I save more: gaps to peers, top merchants, tips |
-| `peer_comparison` | monthly spend per category vs age-band median |
+| `savings_opportunities` | how could I save more: spend above their own usual (12 months before), top merchants, tips |
 | `simulate_change` | what if I cut/raise a category or basket by X%: monthly, yearly, horizon, savings rate |
 | `explore_transactions` | free exploration: filter, group, aggregate; `subcategory` (taxi, fuel, pharmacy…) by merchant category code |
 

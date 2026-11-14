@@ -13,14 +13,11 @@ import argparse
 import csv
 import os
 import sqlite3
-import statistics
 import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from taxonomy import (  # noqa: E402
-    AGE_BANDS, BUCKET_LABELS, CATEGORY_BUCKET, SPEND_CATEGORIES, age_band,
-)
+from taxonomy import age_band  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_DB = os.path.join(HERE, "data", "s_pankki.sqlite")
@@ -47,9 +44,6 @@ CREATE TABLE transactions (
   tx_ts TEXT NOT NULL, hour INTEGER NOT NULL, weekday INTEGER NOT NULL,
   category TEXT NOT NULL, amount REAL NOT NULL, balance_after REAL NOT NULL,
   tx_type TEXT NOT NULL, merchant_id TEXT, mcc TEXT);
-CREATE TABLE peer_benchmark (
-  age_band TEXT NOT NULL, key TEXT NOT NULL, avg_monthly REAL NOT NULL,
-  median_monthly REAL NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (age_band, key));
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE mortgage_applications (
   mortgage_customer_id TEXT PRIMARY KEY, customer_id TEXT NOT NULL,
@@ -159,7 +153,6 @@ def build(csv_dir, db_path):
                     ("mortgage_applications", str(n_apps)),
                     ("mortgage_events", str(n_events)), ("mcc_codes", str(n_mcc))])
 
-    build_peer_benchmark(db, ages)
     db.commit()
     db.execute("VACUUM")
     db.close()
@@ -201,35 +194,6 @@ def load_mortgages(db, csv_dir):
     db.execute("CREATE INDEX idx_mtg_app_customer ON mortgage_applications (customer_id)")
     db.execute("CREATE INDEX idx_mtg_events_mc ON mortgage_events (mortgage_customer_id, ts)")
     return len(apps), len(data)
-
-
-def build_peer_benchmark(db, ages):
-    """Per age band: typical monthly spend per category, per bucket and in total."""
-    months = {c: m for c, m in db.execute(
-        "SELECT customer_id, COUNT(DISTINCT substr(tx_date,1,7)) FROM transactions"
-        " GROUP BY customer_id")}
-    spend = {}
-    marks = ",".join("?" * len(SPEND_CATEGORIES))
-    for cid, cat, total in db.execute(
-            "SELECT customer_id, category, -SUM(amount) FROM transactions"
-            " WHERE category IN (%s) GROUP BY customer_id, category" % marks,
-            SPEND_CATEGORIES):
-        spend.setdefault(cid, {})[cat] = total
-    samples = {}  # (band, key) -> [monthly values]
-    for cid, cats in spend.items():
-        band = age_band(ages[cid])
-        m = max(months.get(cid, 1), 1)
-        keys = {c: cats.get(c, 0.0) / m for c in SPEND_CATEGORIES}
-        for b in BUCKET_LABELS:
-            keys["bucket:" + b] = sum(v for c, v in keys.items()
-                                      if CATEGORY_BUCKET.get(c) == b)
-        keys["total"] = sum(cats.values()) / m
-        for k, v in keys.items():
-            samples.setdefault((band, k), []).append(v)
-    rows = [(band, k, statistics.fmean(v), statistics.median(v), len(v))
-            for (band, k), v in samples.items()]
-    db.executemany("INSERT INTO peer_benchmark VALUES (?,?,?,?,?)", rows)
-    assert all(b in AGE_BANDS for b, *_ in rows)
 
 
 if __name__ == "__main__":

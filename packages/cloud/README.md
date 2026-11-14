@@ -38,7 +38,7 @@ gitignored. Seeding builds into a temporary file and swaps it in, so a failed ru
 the old database. `taxonomy.py` defines which categories are spending and the three
 buckets; `store.py` is the read-only access (open with `mode=ro`).
 
-Tables: `customers`, `transactions`, `peer_benchmark`, `meta`, `mortgage_applications`
+Tables: `customers`, `transactions`, `meta`, `mortgage_applications`
 (one row per application, linked to `customer_id`), `mortgage_events` (application
 event history), `mcc_codes` (Merchant Category Code reference: code → official names). The upstream column `lfinal_loan_to_value` is stored as
 `final_loan_to_value`.
@@ -110,7 +110,7 @@ We keep the local stand-in for now (team decision). Notes for when it moves:
 - **Suggestion (unverified, check before choosing):** Google Cloud in `europe-north1`
   (Finland), Cloud SQL for PostgreSQL as the serving store, the backend on Cloud Run in
   the same region. Data stays in Finland. Use BigQuery only beside it for analytics
-  (peer benchmarks, Statistics Finland joins), not for serving chat queries — it has
+  (e.g. Statistics Finland joins), not for serving chat queries — it has
   ~1 s per-query latency and bills a minimum per query.
 - **What can override that:** whichever cloud S-Bank already uses — matching it helps
   the "potential to integrate into S-mobiili" criterion. Ask the S-Bank IT/AI mentor

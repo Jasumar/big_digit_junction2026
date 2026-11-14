@@ -172,9 +172,9 @@ class TestChartsLanguage(Base):
         en = json.dumps(present.build(res, "en"), ensure_ascii=False)
         sv = json.dumps(present.build(res, "sv"), ensure_ascii=False)
         for word in ("Tyyppi", "Kulutus kuukaudessa", "Kolme menokoria", "Arjen pikkukulut",
-                     "Turvallisesti käytettävissä", "ikätoverit"):
+                     "Turvallisesti käytettävissä", "Kuukausikulutus menokoreittain"):
             self.assertIn(word, fi)
-        for english in ("Monthly spend", "Regular essentials", "Safe to spend", "peers"):
+        for english in ("Monthly spend", "Regular essentials", "Safe to spend", "by basket"):
             self.assertNotIn(english, fi)
         self.assertIn("\u00a0€", fi)
         self.assertNotIn("\u00a0€", en)
@@ -323,7 +323,7 @@ class TestOpenRouterProvider(Base):
             self.call("spender_profile", "{}"),
             self.call("safe_to_spend", '{"horizon_days": 7}'),
             self.call("savings_opportunities", "{}"),
-            self.call("peer_comparison", "{}"),
+            self.call("explore_transactions", "{}"),
         ]))
         plan = provider.plan("x", tools.describe_catalog())
         self.assertEqual(len(plan["requests"]), 3)
@@ -626,6 +626,73 @@ class TestMccCodes(Base):
             self.assertGreater(Store(db).info()["mcc_codes"], 900)
         finally:
             shutil.rmtree(tmp)
+
+
+class TestNoOtherCustomersData(Base):
+    """T017: nothing about other customers — not even medians or averages — is computed,
+    stored for the coach, or shown (banking secrecy)."""
+
+    WORDS = ("peer", "median", "age_band", "average_of", "cohort")
+
+    def test_no_peer_tool_or_table(self):
+        names = [t["name"] for t in tools.describe_catalog()]
+        self.assertNotIn("peer_comparison", names)
+        self.assertFalse(hasattr(self.store, "peer"))
+        tables = {r["name"] for r in self.store.rows(
+            "SELECT name FROM sqlite_master WHERE type = 'table'")}
+        self.assertNotIn("peer_benchmark", tables)
+        catalog = json.dumps(tools.describe_catalog()).lower()
+        for w in ("peer", "median", "same age"):
+            self.assertNotIn(w, catalog)
+
+    def test_no_tool_result_mentions_other_customers(self):
+        import present
+        for name, args in (("spender_profile", {}), ("savings_opportunities", {}),
+                           ("spending_breakdown", {}), ("safe_to_spend", {}),
+                           ("simulate_change", {"category": "Restaurants", "change_pct": -20}),
+                           ("explore_transactions", {"group_by": "category"})):
+            d = json.dumps(tools.run(name, self.store, CID, args)).lower()
+            for w in self.WORDS:
+                self.assertNotIn(w, d, "%s result mentions %r" % (name, w))
+            for lang in ("fi", "sv", "en"):
+                shown = json.dumps(present.build([{"tool": name, "ok": True, "data":
+                                                   tools.run(name, self.store, CID, args)}],
+                                                  lang), ensure_ascii=False).lower()
+                for w in ("ikätover", "jämnårig", "peer", "median", "mediaani"):
+                    self.assertNotIn(w, shown)
+
+    def test_savings_use_own_history(self):
+        d = tools.run("savings_opportunities", self.store, CID, {})
+        self.assertIn(d["basis"], ("above_usual", "gentle_trim"))
+        for i in d["ideas"]:
+            self.assertIn("usual_monthly", i)
+            self.assertGreaterEqual(i["potential_monthly"], 0)
+
+    def test_peer_questions_are_declined(self):
+        import scope
+        for q, lang in (("Miten tuloni vertautuvat muihin ikäisiini?", "fi"),
+                        ("Miten kulutukseni vertautuu samanikäisiin?", "fi"),
+                        ("Kulutanko enemmän kuin keskivertosuomalainen?", "fi"),
+                        ("How do I compare to others my age?", "en"),
+                        ("Do I spend more than the average customer?", "en"),
+                        ("Hur står jag mig jämfört med andra i min ålder?", "sv")):
+            self.assertEqual(scope.limitation(q, lang, "2026-09-30"),
+                             scope.TEXT["others"][lang], q)
+        self.assertEqual(scope.limitation("Mihin rahani menivät tässä kuussa?", "fi",
+                                          "2026-09-30"), "")
+
+    def test_no_peer_follow_ups(self):
+        import followups
+        res = [{"tool": "spender_profile", "ok": True,
+                "data": tools.run("spender_profile", self.store, CID, {})}]
+        for lang in ("fi", "sv", "en"):
+            text = json.dumps(followups.fallback(res, lang), ensure_ascii=False).lower()
+            for w in ("ikätover", "ikäisi", "jämnårig", "others my age"):
+                self.assertNotIn(w, text)
+        kept = followups.clean([{"kind": "explore", "label": "Vertaa muihin",
+                                 "prompt": "Miten vertaudun muihin ikäisiini?"}],
+                               "x", "fi", "2026-09-30", set())
+        self.assertEqual(kept, [])
 
 
 class TestGemma4Fixes(Base):

@@ -62,6 +62,3 @@ class Store:
             return {}
         return {r["mcc"]: r["name"] for r in rows}
 
-    def peer(self, age_band, key):
-        return self.one("SELECT avg_monthly, median_monthly, n FROM peer_benchmark"
-                        " WHERE age_band = ? AND key = ?", (age_band, key))
