@@ -48,7 +48,12 @@ python3 packages/cloud/seed.py --full  # ~70 s, ~500 MB database, gitignored
 The raw data is too big for git (GitHub's limit is 100 MB per file), so every clone
 fetches it once with the commands above.
 
-### With the real AI (Gemma 3 27B on Modal)
+### With the real AI (Gemma on Modal, or OpenRouter)
+
+Two ways to run a real model; pick one. The prompt and answer paths are the same either
+way — only which provider `AI_PROVIDER` names changes.
+
+#### Modal + Gemma 3 27B (our deployment)
 
 The model runs on our Modal deployment; you only need its URL and key, not a Modal or
 Hugging Face account.
@@ -63,11 +68,24 @@ Hugging Face account.
 3. The first question after ~10 idle minutes waits for a cold start (~4 min); later
    answers take ~10 s. Every question bills GPU time to the deploy owner's Modal account.
 
-Without the key the app still works on the offline, English-only stub. Deploying or
-changing the model: `apps/ai/README.md` §Modal.
+Deploying or changing the model: `apps/ai/README.md` §Modal.
 
-Env: `PORT`, `AI_PROVIDER` (`stub` or `modal`), `AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL`,
-`AI_TIMEOUT`, `SPANKKI_DB`, `REQUIRE_FULL_DATA` — see `.env.example`. On the sample data the server prints a warning and the UI shows a
+#### OpenRouter (no deployment of ours)
+
+Set `AI_PROVIDER=openrouter` and put a key from https://openrouter.ai/keys into
+`OPENROUTER_API_KEY`; `OPENROUTER_MODEL` defaults to `google/gemma-4-26b-a4b-it` (any
+OpenRouter slug works). Nothing to deploy, no Modal account; each question bills the key
+owner's OpenRouter account.
+
+    set -a; . ./.env; set +a; AI_PROVIDER=openrouter python3 apps/bank-backend/server.py
+
+Without a key the server refuses to start and says where the key goes. Either way the app
+still works on the offline, English-only stub.
+
+Env: `PORT`, `AI_PROVIDER` (`stub` | `modal` | `openrouter`), `AI_BASE_URL`, `AI_API_KEY`,
+`AI_MODEL`, `AI_TIMEOUT`, `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, `SPANKKI_DB`,
+`REQUIRE_FULL_DATA` — see `.env.example`. On the sample data the server prints a warning
+and the UI shows a
 banner; for the demo start it with `REQUIRE_FULL_DATA=1` so it refuses to run without the
 full dataset. `GET /api/health` reports which data is loaded.
 

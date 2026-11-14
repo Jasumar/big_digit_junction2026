@@ -3,6 +3,7 @@
 .env.*
 !.env.example
 preferences.md
+visualizations/
 
 # per-task checkouts
 .worktrees/
