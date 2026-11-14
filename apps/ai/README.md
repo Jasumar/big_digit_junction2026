@@ -1,17 +1,21 @@
 # apps/ai
 
 **Local AI model** in the architecture (`docs/SYSTEM_MAP.md`). Turns a client command
-plus calculation results into an answer and insights. The default is the stub — a
-rule-based, English-only provider that works offline — plus the **Gemma provider**,
-deployed on Modal and working end to end (T008).
+plus calculation results into an answer and insights. Three providers: the **stub** —
+rule-based, English-only, works offline, the default — the **Gemma provider** deployed on
+Modal and working end to end (T008), and **openrouter**, a hosted model that needs only a
+key (T009).
 
 **Hosting:** for the challenge we run **Gemma 3 27B on Modal** (serverless GPU) behind an
 OpenAI-compatible API — our own deployment of an open model, which is the closest
-challenge-time stand-in for S-Bank's self-hosting. S-Bank itself may run **self-hosted** models in production; that is what the
-diagram's "local" means. The provider interface below is the seam: switching from an API
-to a self-hosted model changes one file, nothing else. What reaches the AI is the
-customer's question and **aggregated tool results** (totals, shares, dates), never raw
-transaction rows; with an API those results leave our infrastructure, which is
+challenge-time stand-in for S-Bank's self-hosting. A hosted **OpenRouter** model
+(`google/gemma-4-26b-a4b-it`) is the zero-setup alternative when no deployment is
+reachable; both sit behind the same two calls. S-Bank itself may run **self-hosted**
+models in production; that is what the diagram's "local" means. The provider interface
+below is the seam: switching from an API to a self-hosted model changes one file, nothing
+else. What reaches the AI is the customer's question and **aggregated tool results**
+(totals, shares, dates), never raw transaction rows; with an API those results leave our
+infrastructure, which is
 acceptable here because the data is synthetic.
 
 Owner: `TODO` (`docs/SYSTEM_MAP.md`)
@@ -26,8 +30,9 @@ Owner: `TODO` (`docs/SYSTEM_MAP.md`)
 
 ## Setup
 
-Two providers: `AI_PROVIDER=stub` (default, offline rules, English only) and
-`AI_PROVIDER=modal` (Gemma on Modal, below).
+Three providers: `AI_PROVIDER=stub` (default, offline rules, English only),
+`AI_PROVIDER=modal` (Gemma on Modal, below) and `AI_PROVIDER=openrouter` (a hosted model
+that needs only a key).
 
 ### Modal + Gemma 3 27B
 
@@ -114,6 +119,31 @@ with it unset afterwards. Send one question before going on stage to skip the co
 - **Rotate the key** (if lost or leaked): make a new random key, run
   `modal secret create coach-llm-key VLLM_API_KEY=<new> --force`, redeploy, update
   `.env`, and send it to the team again.
+
+### OpenRouter
+
+`AI_PROVIDER=openrouter`. Needs a key, nothing else:
+
+```bash
+cp .env.example .env                 # if you have no .env yet
+# put your key from https://openrouter.ai/keys into OPENROUTER_API_KEY
+set -a; source .env; set +a
+python3 apps/bank-backend/server.py
+```
+
+`openrouter_provider.py` uses only `urllib` — no SDK, no install — against
+`https://openrouter.ai/api/v1/chat/completions`. Model: `OPENROUTER_MODEL`, default
+`google/gemma-4-26b-a4b-it` (any OpenRouter slug works). Without a key it refuses to
+start, with a message saying where the key goes; keep `AI_PROVIDER=stub` to run offline.
+
+- `plan` sends the catalog as native OpenAI-style `tools` and reads `tool_calls` back;
+  arguments are parsed and passed through unchanged (the backend validates them at step
+  3), capped at 3.
+- `compose` asks for `response_format={"type": "json_object"}` with the results as JSON;
+  if the reply is not JSON it falls back to the prose as `text`.
+- One retry on 408/429/5xx or a network error, then a clear `OpenRouterError`; the
+  server turns that into a 500 with the message, it never fakes an answer. Unlike the
+  Modal provider it does not fall back to the stub — a hosted model failing is visible.
 
 ### Adding another provider
 
