@@ -54,7 +54,8 @@ Index of `docs/tasks/`. Keep it short; one owner per task.
 | [T007](tasks/T007-walking-skeleton.md) | `TODO` | all | T003–T006 | review |
 | [T008](tasks/T008-local-ai-modal.md) | `TODO` | ai | T007 | merged |
 | [T009](tasks/T009-openrouter-provider.md) | `TODO` | ai | T008 | merged |
-| [T010](tasks/T010-improve-ai-rules.md) | `TODO` | ai | T008 | review |
+| [T010](tasks/T010-improve-ai-rules.md) | `TODO` | ai | T008 | merged |
+| [T012](tasks/T012-ui-language.md) | `TODO` | frontend | T010 | review |
 
 Order: T001 first (everyone, short). Then T002. Then T003, T004, T005, T006 in
 parallel — one person each. T007 joins them into M1. All seven were built together in

@@ -11,6 +11,8 @@ COMMAND = {
     "properties": {
         "customer_id": {"type": "string", "minLength": 1, "maxLength": 32},
         "text": {"type": "string", "minLength": 1, "maxLength": 500},
+        # UI language; the answer follows the question's language and falls back to this
+        "lang": {"type": "string", "enum": ["en", "fi", "sv"]},
         "history": {  # optional earlier turns, oldest first
             "type": "array", "maxItems": 10,
             "items": {"type": "object", "required": ["role", "text"],
@@ -98,7 +100,8 @@ ANSWER = {
 }
 
 EXAMPLES = {
-    "command": {"customer_id": "CUST00001", "text": "Where did my money go this month?"},
+    "command": {"customer_id": "CUST00001", "text": "Where did my money go this month?",
+                "lang": "en"},
     "calculation_request": {"tool": "spending_breakdown", "args": {"period": "this_month"}},
     "calculation_result": {"tool": "spending_breakdown", "ok": True,
                            "data": {"total_spend": 1234.5}},

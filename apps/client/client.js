@@ -28,13 +28,16 @@ export function createClient({ baseUrl = "", timeoutMs = 150000 } = {}) {
   return {
     health: () => request("/api/health"),
     customers: (limit = 12) => request("/api/customers?limit=" + limit).then((b) => b.customers),
-    overview: (customerId) => request("/api/overview?customer_id=" + encodeURIComponent(customerId)),
+    overview: (customerId, lang) => request("/api/overview?customer_id=" + encodeURIComponent(customerId)
+      + (lang ? "&lang=" + encodeURIComponent(lang) : "")),
     // Command -> Answer. `history` is optional: [{role: "user"|"coach", text}]
-    command: (customerId, text, history = []) =>
+    // lang = the UI language: the AI answers in the question's language and falls back to it
+    command: (customerId, text, history = [], lang) =>
       request("/api/command", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customer_id: customerId, text, history: history.slice(-6) }),
+        body: JSON.stringify({ customer_id: customerId, text, history: history.slice(-6),
+                               ...(lang ? { lang } : {}) }),
       }),
   };
 }

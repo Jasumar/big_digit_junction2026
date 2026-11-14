@@ -396,6 +396,33 @@ class TestProviderSelection(unittest.TestCase):
         self.assertIn("stub, modal, openrouter", str(cm.exception))
 
 
+class TestUiLanguage(Base):
+    def test_overview_bucket_labels_follow_language(self):
+        fi = orchestrator.overview(CID, self.store, "fi")["bucket_labels"]
+        self.assertEqual(fi["everyday"], "Arjen pikkukulut")
+        sv = orchestrator.overview(CID, self.store, "sv")["bucket_labels"]
+        self.assertEqual(sv["everyday"], "Vardagsutgifter")
+        self.assertEqual(orchestrator.overview(CID, self.store)["bucket_labels"]["everyday"],
+                         "Everyday spending")
+
+    def test_ui_language_is_the_fallback(self):
+        class NoLang:  # a provider that does not report the answer language
+            name = "nolang"
+            def plan(self, text, tools, history=None, context=None):
+                return {"requests": [{"tool": "spending_breakdown", "args": {}}]}
+            def compose(self, text, results, history=None, context=None):
+                return {"text": "Ok.", "insights": []}
+        a = orchestrator.handle_command({"customer_id": CID, "text": "x", "lang": "fi"},
+                                        self.store, NoLang())
+        self.assertEqual(a["lang"], "fi")
+        self.assertIn("Kolme menokoria", json.dumps(a["visuals"], ensure_ascii=False))
+        b = orchestrator.handle_command({"customer_id": CID, "text": "x"}, self.store, NoLang())
+        self.assertEqual(b["lang"], "en")
+        with self.assertRaises(orchestrator.BadCommand):
+            orchestrator.handle_command({"customer_id": CID, "text": "x", "lang": "de"},
+                                        self.store, NoLang())
+
+
 class TestFlow(Base):
     def test_brief_questions(self):
         for q, tool in (("Where did my money go?", "spending_breakdown"),
