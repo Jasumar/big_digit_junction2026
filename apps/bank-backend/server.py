@@ -65,14 +65,24 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         sys.stderr.write("%s %s\n" % (self.command, self.path))
 
+    def _send(self, code, ctype, data, cache):
+        # The client (browser, or the platform proxy in front of the container) may hang
+        # up before a slow coach answer is ready. That is not a server error: log one
+        # line and drop the response instead of trying to write a 500 to a dead socket.
+        try:
+            self.send_response(code)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", cache)
+            self.end_headers()
+            self.wfile.write(data)
+        except (BrokenPipeError, ConnectionResetError):
+            self.close_connection = True
+            sys.stderr.write("%s %s: client disconnected before the response was sent\n"
+                             % (self.command, self.path))
+
     def _json(self, code, body):
-        data = json.dumps(body).encode()
-        self.send_response(code)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(data)))
-        self.send_header("Cache-Control", "no-store")
-        self.end_headers()
-        self.wfile.write(data)
+        self._send(code, "application/json", json.dumps(body).encode(), "no-store")
 
     def do_GET(self):
         url = urlparse(self.path)
@@ -123,12 +133,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(404, {"error": "not found"})
         with open(full, "rb") as f:
             data = f.read()
-        self.send_response(200)
-        self.send_header("Content-Type", mimetypes.guess_type(full)[0] or "text/plain")
-        self.send_header("Content-Length", str(len(data)))
-        self.send_header("Cache-Control", "no-cache")
-        self.end_headers()
-        self.wfile.write(data)
+        self._send(200, mimetypes.guess_type(full)[0] or "text/plain", data, "no-cache")
 
 
 def main():
