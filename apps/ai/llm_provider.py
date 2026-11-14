@@ -319,6 +319,9 @@ class Provider:
         ctx = context or {}
         note = ("\n\nLimitation (say this first): %s" % ctx["limitation"]
                 if ctx.get("limitation") else "")
+        names = {"fi": "Finnish", "sv": "Swedish", "en": "English"}
+        if ctx.get("question_lang") in names:
+            note += "\n\nAnswer in %s." % names[ctx["question_lang"]]
         messages = ([{"role": "system",
                       "content": COMPOSE_SYSTEM.format(rules=self._rules(context))}]
                     + self._history(history)

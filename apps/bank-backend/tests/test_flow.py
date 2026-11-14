@@ -628,6 +628,42 @@ class TestMccCodes(Base):
             shutil.rmtree(tmp)
 
 
+class TestGemma4Fixes(Base):
+    """Model-agnostic fixes found when evaluating Gemma 4 (T016)."""
+
+    def test_category_wins_over_contradicting_direction(self):
+        d = tools.run("explore_transactions", self.store, CID,
+                      {"period": "all", "category": "Invest Deposit", "direction": "spend",
+                       "group_by": "none"})
+        plain = tools.run("explore_transactions", self.store, CID,
+                          {"period": "all", "category": "Invest Deposit", "group_by": "none"})
+        self.assertEqual(d["direction"], "all")
+        self.assertEqual(d["total"], plain["total"])
+
+    def test_guess_lang(self):
+        import scope
+        self.assertEqual(scope.guess_lang("What did I spend yesterday?"), "en")
+        self.assertEqual(scope.guess_lang("Paljonko olen sijoittanut viimeisen vuoden aikana?"), "fi")
+        self.assertEqual(scope.guess_lang("Hur mycket kan jag spendera den här veckan?"), "sv")
+        self.assertIsNone(scope.guess_lang("OK"))
+
+    def test_localize_terms(self):
+        import scope
+        en = scope.localize_terms({"lang": "en", "insights": [], "text":
+            "51 % went to pakolliset säännölliset menot and 22 % to arjen pikkukulut; "
+            "your largest category was asuminen."})
+        self.assertIn("regular essentials", en["text"])
+        self.assertIn("everyday spending", en["text"])
+        self.assertIn("housing", en["text"])
+        self.assertNotIn("pakolliset", en["text"])
+        sv = scope.localize_terms({"lang": "sv", "insights": [], "text":
+            "Främst Pakolliset säännölliset menot och vardagsutgifter."})
+        self.assertIn("Nödvändiga fasta utgifter", sv["text"])
+        fi = scope.localize_terms({"lang": "fi", "insights": [], "text":
+            "Arjen pikkukulut ja asuminen."})
+        self.assertEqual(fi["text"], "Arjen pikkukulut ja asuminen.")  # already Finnish
+
+
 class TestFlow(Base):
     def test_brief_questions(self):
         for q, tool in (("Where did my money go?", "spending_breakdown"),

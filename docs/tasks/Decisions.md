@@ -80,6 +80,10 @@ by raising it; the "Where" column says what to touch.
 
 | 61 | **No warning boxes in the UI** (team decision): `answer.notice` is not rendered; the limitation still reaches the model, so the answer text states it once. The field stays in the API (evaluation `notice` check, tests). | The box repeated the first sentence of the answer. | `apps/frontend/app.js`, `styles.css` |
 
+| 62 | **Gemma 4 26B-A4B replaces Gemma 3 27B** (team decision, T016) on the same Modal app and URL; `COACH_MODEL=google/gemma-3-27b-it` redeploys the old model, `COACH_APP` deploys a second app for side-by-side tests. | Mixture of experts (~4B active per token): 3.6 s median answer vs 11.0 s, and 33/33 eval cases vs 31/33 after the fixes below. Not gated on Hugging Face. | `apps/ai/modal_app.py` |
+
+| 63 | **Model-agnostic fixes from the Gemma 4 evaluation:** an explicit category wins over a contradicting `direction` (investments with "spend" answered 0 €); the backend guesses the question's language from common words and uses it for the limitation and the "answer in" instruction; basket/category names in another language are replaced with the answer language's names. | Each was a Gemma 4 eval failure; all are checks in code, so they hold for any model. | `calculation/tools.py`, `scope.py`, `orchestrator.py`, `llm_provider.py` |
+
 ## Known limits
 
 - Stub understands English keywords only; Finnish questions and anything outside its

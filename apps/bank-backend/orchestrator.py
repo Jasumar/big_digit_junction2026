@@ -59,7 +59,9 @@ def handle_command(command, store, provider):
 
     # Limits are decided in code: the model both missed real limits ("March?") and invented
     # false ones ("last month" refused). Its own limitation is used only for no-tool replies.
-    limitation = scope.limitation(command["text"], plan.get("lang") or ui_lang, as_of)
+    question_lang = scope.guess_lang(command["text"]) or plan.get("lang") or ui_lang
+    context["question_lang"] = question_lang
+    limitation = scope.limitation(command["text"], question_lang, as_of)
     if not limitation and not requests and plan.get("coverage") == "none":
         limitation = (plan.get("limitation") or "").strip()
     context["limitation"] = limitation
@@ -82,6 +84,7 @@ def handle_command(command, store, provider):
         sys.stderr.write("[guard] removed unbacked numbers %s\n" % removed[:5])
     composed = scope.redact_merchants(composed)
     composed = scope.drop_foreign_terms(composed)
+    composed = scope.localize_terms(composed)
 
     # step 7: answer goes back to the client
     answer = {"text": composed["text"], "insights": composed.get("insights", []),

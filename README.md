@@ -5,7 +5,7 @@ gives a command, a locally hosted AI model answers with insights, backed by
 calculations over the client's own data.
 
 Status: **working MVP** — a mobile-first S-pankki money coach over the full hackathon
-transaction data. The AI is Gemma 3 27B on Modal (or OpenRouter, or an offline stub),
+transaction data. The AI is Gemma 4 26B-A4B on Modal (or OpenRouter, or an offline stub),
 answering in Finnish, Swedish or English. Demo plan: `docs/DEMO.md` (local only for now, gitignored). Choices made while
 building it: `docs/tasks/Decisions.md`.
 
@@ -54,7 +54,7 @@ fetches it once with the commands above.
 Two ways to run a real model; pick one. The prompt and answer paths are the same either
 way — only which provider `AI_PROVIDER` names changes.
 
-#### Modal + Gemma 3 27B (our deployment)
+#### Modal + Gemma 4 26B-A4B (our deployment)
 
 The model runs on our Modal deployment; you only need its URL and key, not a Modal or
 Hugging Face account.

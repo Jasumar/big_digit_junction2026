@@ -429,9 +429,14 @@ def explore_transactions(store, customer_id, args):
     group_by = args.get("group_by", "category")
     metric = args.get("metric", "sum")
     direction = args.get("direction")
+    cat = args.get("category")
     if direction is None:  # income/transfer categories are not spending; don't filter them out
-        cat = args.get("category")
         direction = "all" if cat in INCOME_CATEGORIES or cat in TRANSFER_CATEGORIES else "spend"
+    elif cat and ((direction == "spend" and cat not in SPEND_CATEGORIES)
+                  or (direction == "income" and cat not in INCOME_CATEGORIES)):
+        # e.g. Gemma 4 asked for "Invest Deposit" with direction "spend", which filters the
+        # category out and answers 0 EUR; the explicit category wins
+        direction = "all"
     limit = int(args.get("limit", 10))
     where = ["customer_id = ?", "tx_date BETWEEN ? AND ?"]
     params = [customer_id, c["start"], c["end"]]

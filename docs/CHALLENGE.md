@@ -96,7 +96,7 @@ As of T014 (2026-11-14; choices in `docs/tasks/Decisions.md`):
 | What-if ("reduce dining out by 20%") | done — `simulate_change` (category or basket, ±%, horizon) |
 | Safe to save | **missing** |
 | Plain-language explanations of concepts | partly — Gemma explains concepts ("korkoa korolle", the three baskets); not systematically tested |
-| Real conversational AI | done — Gemma 3 27B on Modal answers in Finnish and English (T008); stub as offline fallback |
+| Real conversational AI | done — Gemma 4 26B-A4B on Modal answers in Finnish, Swedish and English (T008, T016); stub as offline fallback |
 | Finnish / Swedish | done — UI switch FI/SV/EN (T012), answers and charts in the user's language; offline stub is English-only |
 | Interactivity | done — tappable follow-up questions under answers (T013) |
 | "What kind of spender am I" depth | done — life signals from purchases with evidence (T011) |

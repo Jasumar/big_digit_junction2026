@@ -6,7 +6,7 @@ rule-based, English-only, works offline, the default — the **Gemma provider** 
 Modal and working end to end (T008), and **openrouter**, a hosted model that needs only a
 key (T009).
 
-**Hosting:** for the challenge we run **Gemma 3 27B on Modal** (serverless GPU) behind an
+**Hosting:** for the challenge we run **Gemma 4 26B-A4B on Modal** (serverless GPU) behind an
 OpenAI-compatible API — our own deployment of an open model, which is the closest
 challenge-time stand-in for S-Bank's self-hosting. A hosted **OpenRouter** model
 (`google/gemma-4-26b-a4b-it`) is the zero-setup alternative when no deployment is
@@ -34,9 +34,9 @@ Three providers: `AI_PROVIDER=stub` (default, offline rules, English only),
 `AI_PROVIDER=modal` (Gemma on Modal, below) and `AI_PROVIDER=openrouter` (a hosted model
 that needs only a key).
 
-### Modal + Gemma 3 27B
+### Modal + Gemma 4 26B-A4B
 
-`modal_app.py` runs `google/gemma-3-27b-it` with vLLM on one H100 on Modal and exposes
+`modal_app.py` runs `google/gemma-4-26B-A4B-it` (Gemma 3 27B until T016) with vLLM on one H100 on Modal and exposes
 an OpenAI-compatible API protected by a key. `llm_provider.py` is the backend side: it
 sends the tool catalog and asks for JSON plans and answers (structured output), using
 only the standard library. If the model is down or replies badly, that step falls back to
@@ -44,7 +44,9 @@ the stub and logs it, so the demo keeps answering.
 
 One-time setup, done by whoever deploys (Claude never handles these tokens):
 
-1. **Gemma licence:** on Hugging Face, open **exactly** `google/gemma-3-27b-it` (access is
+1. **Hugging Face token:** Gemma 4 is Apache-2.0 and not gated, so any Read token works.
+   Only if you deploy Gemma 3 (`COACH_MODEL=google/gemma-3-27b-it`): open **exactly**
+   `google/gemma-3-27b-it` (access is
    per model) and accept Google's licence; the page must then say you have been granted
    access. Create a token (Settings → Access Tokens): a classic **Read** token, or a
    fine-grained one with "Read access to contents of all public gated repos you can
@@ -103,7 +105,10 @@ zero 10 minutes after the last request. For the demo, deploy with
 with it unset afterwards. Send one question before going on stage to skip the cold start.
 
 **Tuning:** model, GPU, context length and vLLM version are constants at the top of
-`modal_app.py`. Gemma 3 12B on an L40S is the cheaper fallback if 27B is too slow.
+`modal_app.py`. Previous model: `COACH_MODEL=google/gemma-3-27b-it modal deploy
+apps/ai/modal_app.py` (31/33 eval cases, 11.0 s median, vs Gemma 4's 33/33 at 3.6 s).
+Side by side: `COACH_APP=<other-name>` deploys a second app with its own URL; point
+`AI_BASE_URL` at it for `run_eval.py`, then `modal app stop <other-name>`.
 
 ### Evaluation
 
