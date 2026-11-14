@@ -6,6 +6,7 @@ import tempfile
 import threading
 import unittest
 import urllib.request
+from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
@@ -193,6 +194,93 @@ class TestFlow(Base):
             self.assertEqual(cm.exception.code, 404)
         finally:
             srv.shutdown()
+
+
+class ScriptedStep:
+    """Fake provider with `step`: replies from a script, records what it was shown."""
+    name = "scripted"
+
+    def __init__(self, script):
+        self.script = list(script)
+        self.calls = []
+
+    def step(self, messages, tools):
+        self.calls.append(([dict(m) for m in messages], len(tools)))
+        if not tools:
+            return {"final": {"text": "forced", "insights": []}}
+        return self.script.pop(0)
+
+
+class TestMultiRound(Base):
+    def run_with(self, provider, text="x"):
+        return orchestrator.handle_command({"customer_id": CID, "text": text},
+                                           self.store, provider)
+
+    def test_two_rounds_then_final(self):
+        p = ScriptedStep([
+            {"requests": [{"tool": "spending_breakdown", "args": {"period": "last_30_days"}}]},
+            {"requests": [{"tool": "simulate_change",
+                           "args": {"change_pct": -20, "bucket": "everyday"}}]},
+            {"final": {"text": "done", "insights": [{"title": "t", "body": "b",
+                                                     "kind": "tip"}]}}])
+        a = self.run_with(p)
+        self.assertEqual(validate(ANSWER, a), [])
+        self.assertEqual(a["text"], "done")
+        self.assertEqual([(t["tool"], t["round"], t["approved"]) for t in a["trace"]],
+                         [("spending_breakdown", 1, True), ("simulate_change", 2, True)])
+        self.assertEqual(len(p.calls), 3)
+        last_messages = p.calls[2][0]
+        self.assertEqual([m["role"] for m in last_messages],
+                         ["user", "requests", "results", "requests", "results"])
+        self.assertEqual([r["tool"] for r in last_messages[4]["results"]], ["simulate_change"])
+        self.assertTrue(all(r["ok"] for m in last_messages if m["role"] == "results"
+                            for r in m["results"]))
+        self.assertGreaterEqual(len(a["visuals"]), 2)  # visuals built from both rounds
+
+    def test_forbidden_customer_id_comes_back_as_rejection(self):
+        p = ScriptedStep([
+            {"requests": [{"tool": "spending_breakdown",
+                           "args": {"customer_id": "CUST00002"}}]},
+            {"final": {"text": "sorry", "insights": []}}])
+        a = self.run_with(p)
+        self.assertEqual([(t["approved"], t["round"]) for t in a["trace"]], [(False, 1)])
+        returned = p.calls[1][0][-1]["results"][0]
+        self.assertFalse(returned["ok"])
+        self.assertTrue(returned["rejected"])
+        self.assertIn("customer_id", returned["error"])
+        self.assertEqual(a["visuals"], [])
+
+    def test_round_cap_and_request_cap(self):
+        three = {"requests": [{"tool": "safe_to_spend", "args": {"horizon_days": 7}}] * 5}
+        p = ScriptedStep([three, three, three, three, three])
+        a = self.run_with(p)
+        self.assertEqual(validate(ANSWER, a), [])
+        self.assertEqual(sorted({t["round"] for t in a["trace"]}), [1, 2, 3])
+        self.assertEqual(len(a["trace"]), 9)  # 3 rounds x 3 requests, extras dropped
+        self.assertEqual(len(p.calls), 4)
+        self.assertEqual([n for _, n in p.calls[:3]], [len(tools.describe_catalog())] * 3)
+        self.assertEqual(p.calls[3][1], 0)  # the last call is asked for a final answer
+        self.assertEqual(a["text"], "forced")
+
+    def test_time_limit_asks_for_final_without_rounds(self):
+        p = ScriptedStep([])
+        with mock.patch.object(orchestrator, "TIME_LIMIT_S", 0):
+            a = self.run_with(p)
+        self.assertEqual(a["trace"], [])
+        self.assertEqual(len(p.calls), 1)
+        self.assertEqual(p.calls[0][1], 0)
+
+    def test_model_that_cannot_finish_gets_a_safe_reply(self):
+        class Stubborn:
+            def step(self, messages, tools):
+                return {"requests": [{"tool": "safe_to_spend", "args": {}}]}
+        a = self.run_with(Stubborn())
+        self.assertEqual(validate(ANSWER, a), [])
+        self.assertTrue(a["text"])
+
+    def test_stub_path_unchanged_apart_from_round(self):
+        a = self.ask("Where did my money go?")
+        self.assertEqual([t["round"] for t in a["trace"]], [1])
 
 
 if __name__ == "__main__":
