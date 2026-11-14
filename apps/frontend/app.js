@@ -25,6 +25,11 @@ function renderHome(o) {
   home.replaceChildren();
   const s = o.safe_to_spend, b = o.breakdown;
   home.append(el("h2", "", "Customer " + o.customer.customer_id + " · age " + o.customer.age));
+  if (s && s.as_of) {
+    const [y, m, d] = s.as_of.split("-");
+    home.append(el("div", "asof", "Data until " + Number(d) + "." + Number(m) + "." + y +
+      " — \"this month\" and \"today\" refer to that date"));
+  }
   const hero = el("div", "hero");
   if (s) hero.append(stat("Safe to spend this week", eur(s.safe_to_spend),
     { comfortable: "good", tight: "warn", very_tight: "bad" }[s.status], "Balance " + eur(s.balance)));
@@ -102,6 +107,7 @@ function renderVisual(v) {
 
 function renderAnswer(a) {
   const box = el("div", "msg coach");
+  if (a.notice) box.append(el("div", "notice", a.notice));
   box.append(el("p", "", a.text));
   for (const v of a.visuals) box.append(renderVisual(v));
   for (const i of a.insights) {

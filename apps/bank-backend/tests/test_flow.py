@@ -68,6 +68,25 @@ class TestApproval(unittest.TestCase):
         self.assertFalse(ok("explore_transactions", {"group_by": "customer_id"}))
         self.assertFalse(approval.check({"tool": "spender_profile", "args": {}}, "")[0])
 
+    def test_clean_drops_unknown_args_but_never_customer_id(self):
+        req, dropped = approval.clean({"tool": "spending_breakdown", "args": {
+            "period": "last_month", "type": "category", "category": "Transportation"}})
+        self.assertEqual(req["args"], {"period": "last_month"})
+        self.assertEqual(sorted(dropped), ["category", "type"])
+        self.assertTrue(approval.check(req, CID)[0])
+        req, _ = approval.clean({"tool": "spending_breakdown",
+                                 "args": {"customer_id": "CUST00002", "x": 1}})
+        self.assertFalse(approval.check(req, CID)[0])  # still rejected
+        req, _ = approval.clean({"tool": "explore_transactions",
+                                 "args": {"category": ["Invest Deposit"]}})
+        self.assertEqual(req["args"], {"category": "Invest Deposit"})
+        self.assertTrue(approval.check(req, CID)[0])
+        req, _ = approval.clean({"tool": "explore_transactions",
+                                 "args": {"category": ["Housing", "Travel"]}})
+        self.assertFalse(approval.check(req, CID)[0])  # real lists are still rejected
+        req, _ = approval.clean({"tool": "spending_breakdown", "args": {"period": "forever"}})
+        self.assertFalse(approval.check(req, CID)[0])  # bad values still rejected
+
 
 class TestTools(Base):
     def test_buckets_add_up(self):
@@ -114,6 +133,118 @@ class TestTools(Base):
             tools.run("simulate_change", self.store, CID, {"change_pct": -20})
 
 
+class TestChartsLanguage(Base):
+    def test_charts_follow_language(self):
+        import present
+        res = [{"tool": "spender_profile", "ok": True,
+                "data": tools.run("spender_profile", self.store, CID, {})},
+               {"tool": "spending_breakdown", "ok": True,
+                "data": tools.run("spending_breakdown", self.store, CID, {})},
+               {"tool": "safe_to_spend", "ok": True,
+                "data": tools.run("safe_to_spend", self.store, CID, {})}]
+        fi = json.dumps(present.build(res, "fi"), ensure_ascii=False)
+        en = json.dumps(present.build(res, "en"), ensure_ascii=False)
+        sv = json.dumps(present.build(res, "sv"), ensure_ascii=False)
+        for word in ("Tyyppi", "Kulutus kuukaudessa", "Kolme menokoria", "Arjen pikkukulut",
+                     "Turvallisesti käytettävissä", "ikätoverit"):
+            self.assertIn(word, fi)
+        for english in ("Monthly spend", "Regular essentials", "Safe to spend", "peers"):
+            self.assertNotIn(english, fi)
+        self.assertIn("\u00a0€", fi)
+        self.assertNotIn("\u00a0€", en)
+        self.assertIn("Monthly spend", en)
+        self.assertIn("Vardagsutgifter", sv)
+        for t in tools.CATALOG:  # every tool's chart builds in every language
+            args = {"change_pct": -20, "bucket": "everyday"} \
+                if t["name"] == "simulate_change" else {}
+            data = tools.run(t["name"], self.store, CID, args)
+            for lang in ("en", "fi", "sv"):
+                present.build([{"tool": t["name"], "ok": True, "data": data}], lang)
+
+
+class TestSafety(Base):
+    def test_strip_unbacked(self):
+        from ai.grounding import strip_unbacked
+        ans = {"lang": "en", "text": "You spent €1,879. You also spent €357 on coffee.",
+               "insights": [{"title": "x", "body": "€4,444 saved", "kind": "info"}]}
+        out, removed = strip_unbacked(ans, [1879.0], "SAFE")
+        self.assertEqual(out["text"], "You spent €1,879.")
+        self.assertEqual(out["insights"], [])
+        self.assertEqual(sorted(removed), [357.0, 4444.0])
+        out, _ = strip_unbacked({"lang": "en", "text": "€357 only.", "insights": []}, [], "SAFE")
+        self.assertEqual(out["text"], "SAFE")
+        ex = {"lang": "fi", "text": "Esimerkiksi 1 000 € kasvaa 5 %:n korolla.", "insights": []}
+        out, _ = strip_unbacked(ex, [], "SAFE", allow_examples=True)
+        self.assertIn("1 000", out["text"])
+
+    def test_transfer_categories_are_not_filtered_out(self):
+        d = tools.run("explore_transactions", self.store, CID,
+                      {"period": "all", "category": "Invest Deposit", "group_by": "none"})
+        self.assertEqual(d["direction"], "all")
+        self.assertGreaterEqual(d["count"], 0)
+
+    def test_scope_detector(self):
+        import scope
+        lim = lambda q, lang="fi": scope.limitation(q, lang, "2026-09-30")  # noqa: E731
+        self.assertIn("kalenterikuukautta", lim("Paljonko kulutin maaliskuussa?"))
+        self.assertEqual(lim("Paljonko kulutin syyskuussa?"), "")      # = this month
+        self.assertEqual(lim("Paljonko kulutin elokuussa?"), "")       # = last month
+        self.assertEqual(lim("Paljonko käytin liikkumiseen viime kuussa?"), "")
+        self.assertIn("single day", lim("What did I spend yesterday?", "en"))
+        self.assertEqual(lim("Paljonko kulutan perjantaisin?"), "")  # one weekday: supported
+        self.assertIn("kalenterivuosia", lim("Kulutinko enemmän tänä vuonna kuin viime vuonna?"))
+        self.assertIn("tallentaa", lim("Aseta minulle 300 euron budjetti ravintoloille."))
+        self.assertIn("shop names", lim("How much did I spend at Prisma?", "en"))
+        self.assertIn("kahvi", lim("Paljonko käytän kahviin kuukaudessa?"))
+        self.assertIn("listata", lim("Näytä viimeiset 5 ostostani."))
+        self.assertEqual(lim("Mihin rahani menivät tässä kuussa?"), "")
+        self.assertEqual(lim("How much may I spend this week?", "en"), "")
+        self.assertEqual(lim("Minä viikonpäivänä kulutan eniten?"), "")
+
+    def test_merchant_ids_never_shown_and_not_accepted(self):
+        import scope
+        out = scope.redact_merchants({"lang": "fi", "text": "Eniten MRC-GRO-0032:ssa.",
+                                      "insights": [{"title": "MRC-ENT-0001", "body": "x"}]})
+        self.assertNotIn("MRC-", json.dumps(out))
+        ok, _ = approval.check({"tool": "explore_transactions",
+                                "args": {"merchant_id": "MRC-GRO-0032"}}, CID)
+        self.assertFalse(ok)
+
+    def test_foreign_terms_in_brackets_removed(self):
+        import scope
+        out = scope.drop_foreign_terms({"lang": "en", "text": "You spend €17 a day on everyday "
+                                        "spending (arjen pikkukulut / vardagsutgifter).",
+                                        "insights": []})
+        self.assertEqual(out["text"], "You spend €17 a day on everyday spending.")
+        keep = scope.drop_foreign_terms({"lang": "en", "text": "Rent (due 6 Oct) is set aside.",
+                                         "insights": []})
+        self.assertIn("(due 6 Oct)", keep["text"])
+
+    def test_day_and_time_analysis(self):
+        friday = tools.run("explore_transactions", self.store, CID,
+                           {"period": "all", "weekday": "friday", "group_by": "weekday"})
+        self.assertTrue(friday["purchases_only"])
+        self.assertTrue(all(g["key"] == "Fri" for g in friday["groups"]))
+        weekend = tools.run("explore_transactions", self.store, CID,
+                            {"period": "all", "day_type": "weekend", "group_by": "category"})
+        self.assertNotIn("Housing", [g["key"] for g in weekend["groups"]])
+        self.assertNotIn("Utilities", [g["key"] for g in weekend["groups"]])
+        with_bills = tools.run("explore_transactions", self.store, CID,
+                               {"period": "all", "day_type": "weekend", "include_bills": True,
+                                "group_by": "none"})
+        self.assertGreaterEqual(with_bills["total"], weekend["total"])
+        whole = tools.run("explore_transactions", self.store, CID,
+                          {"period": "all", "group_by": "none"})
+        self.assertFalse(whole["purchases_only"])  # plain totals still include rent
+        night = tools.run("explore_transactions", self.store, CID,
+                          {"period": "all", "time_of_day": "night", "group_by": "hour_band"})
+        self.assertTrue(all(g["key"] == "night (22-6)" for g in night["groups"]))
+
+    def test_answer_has_data_date(self):
+        a = self.ask("Where did my money go?")
+        self.assertEqual(a["data_as_of"], self.store.as_of(CID))
+
+
 class TestFlow(Base):
     def test_brief_questions(self):
         for q, tool in (("Where did my money go?", "spending_breakdown"),
@@ -139,10 +270,10 @@ class TestFlow(Base):
     def test_rejected_request_is_reported_not_run(self):
         class Evil:
             name = "evil"
-            def plan(self, text, tools, history=None):
+            def plan(self, text, tools, history=None, context=None):
                 return {"requests": [{"tool": "spending_breakdown",
                                       "args": {"customer_id": "CUST00002"}}]}
-            def compose(self, text, results, history=None):
+            def compose(self, text, results, history=None, context=None):
                 return {"text": "rejected=%s" % results[0].get("rejected"), "insights": []}
         a = orchestrator.handle_command({"customer_id": CID, "text": "x"}, self.store, Evil())
         self.assertFalse(a["trace"][0]["approved"])

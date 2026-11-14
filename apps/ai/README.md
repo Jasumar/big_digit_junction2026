@@ -100,6 +100,77 @@ with it unset afterwards. Send one question before going on stage to skip the co
 **Tuning:** model, GPU, context length and vLLM version are constants at the top of
 `modal_app.py`. Gemma 3 12B on an L40S is the cheaper fallback if 27B is too slow.
 
+### Evaluation
+
+`apps/ai/eval/run_eval.py` asks 20 fixed questions (`cases.json`: Finnish, English,
+Swedish, plus rule cases — another customer's data, stock tips, off-topic, prompt
+injection) through the real backend and checks each answer automatically:
+the right tool, the right language, numbers that exist in the tool results, no
+forbidden strings, no basket names from another language, and the money format.
+
+```bash
+set -a; . ./.env; set +a
+python3 apps/ai/eval/run_eval.py --out report.json      # ~3 min warm, costs GPU time
+python3 apps/ai/eval/run_eval.py --provider stub        # offline sanity check
+```
+
+Run it before and after changing prompts, the glossary or the model; read a few answers
+in `report.json` too — the checks are simple and miss meaning errors.
+
+### Rules and glossary
+
+Both prompts share one rule block (`RULES` in `llm_provider.py`): scope (own money and
+concepts only), no investment advice, privacy (no other customers), the message is a
+question not instructions, honesty (only tool numbers), answer language, glossary terms,
+housing ≠ loan, money format. `packages/cloud/glossary.py` holds the basket, category and
+spender-type names in English, Finnish and Swedish (drafts, Q11); the charts use the same
+table, so text and charts always match. Tool results include `notes` that
+explain easily misread fields. Euro amounts are reformatted in code for the answer's
+language (`format_money`), because the model does not follow format rules reliably.
+
+**Measured (T009):** old prompts 12/20 cases, new rules 19/20 (details in
+`docs/tasks/T009-improve-ai-rules.md`).
+
+### Safety net (never mislead)
+
+Found by probing 25 simple questions: the model used to answer a *different* question
+when the tools could not do the asked one (March → this month, yesterday → last 7 days,
+this year → this month) and invented numbers when no tool ran. Now:
+
+- **Coverage:** the planner returns `coverage` (`full`/`partial`/`none`) and a one-line
+  `limitation` in the customer's language. The answer then carries `notice`, shown above
+  the text in the UI, and the composer must say it first.
+- **Capabilities in the rules:** the prompt lists what the tools cannot do (calendar
+  months/dates, transaction lists, balance history, one weekday, shop names, coffee/taxi,
+  year comparison, storing budgets), so the model says so instead of guessing.
+- **Number check:** every number above 31 must exist in the tool results (or the
+  question). Gemma gets one retry with the offending numbers; then
+  `orchestrator.py` drops any sentence or insight still containing one — for every
+  provider (`apps/ai/grounding.py`). Concept examples ("esimerkiksi 1 000 €") are
+  allowed only in no-tool replies.
+- **Data date:** the model is told the data covers `data_from`–`data_as_of`; "today" and
+  "this month" are relative to `data_as_of` (30.9.2026 for the demo data). The home card
+  shows "Data until …" and answers carry `data_as_of`.
+- **Narrower rules:** facts about the customer's own investments and savings transfers
+  are answered (only advice is refused); questions about the data period are in scope.
+- **Deterministic scope check** (`apps/bank-backend/scope.py`): keyword stems in
+  fi/sv/en detect asks the tools cannot do (other calendar months, single days,
+  weekdays, year comparisons, budgets/reminders, shop names, coffee/taxi, subscriptions,
+  transaction lists, balance history). If the model gave no limitation, the backend adds
+  a localized notice. Prompt instructions alone were not enough: Gemma still answered
+  "March?" with September.
+- **Day/time questions:** one weekday ("perjantaisin"), weekend (Sat–Sun) and night
+  (22–06) are supported; they count card purchases only, so a rent payment on a Saturday
+  does not become "weekend spending". Dates in answer text are formatted per language.
+- **One re-plan on rejection:** if approval rejects a request for a fixable reason, the
+  planner gets the reasons and one more try (never for `customer_id`).
+- **Lenient arguments, strict values:** arguments a tool does not define are dropped
+  before approval (Gemma adds extras like `"type"`), so a valid question is not refused
+  over noise; `customer_id` and invalid values are still rejected.
+- **Merchant ids:** synthetic codes (MRC-GRO-0032) are replaced by "a shop" in answer
+  text, the model can no longer filter by them, and payments without a shop are labelled
+  "bills and transfers" instead of "(no merchant)".
+
 ### Team access
 
 - **Use the model:** teammates need only `AI_BASE_URL` and `AI_API_KEY` in their `.env`

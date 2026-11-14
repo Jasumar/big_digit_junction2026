@@ -52,7 +52,8 @@ Index of `docs/tasks/`. Keep it short; one owner per task.
 | [T005](tasks/T005-local-ai-spike.md) | `TODO` | ai | T001 | review |
 | [T006](tasks/T006-frontend-client-skeleton.md) | `TODO` | frontend, client | T002 | review |
 | [T007](tasks/T007-walking-skeleton.md) | `TODO` | all | T003–T006 | review |
-| [T008](tasks/T008-local-ai-modal.md) | `TODO` | ai | T007 | review |
+| [T008](tasks/T008-local-ai-modal.md) | `TODO` | ai | T007 | merged |
+| [T009](tasks/T009-improve-ai-rules.md) | `TODO` | ai | T008 | review |
 
 Order: T001 first (everyone, short). Then T002. Then T003, T004, T005, T006 in
 parallel — one person each. T007 joins them into M1. All seven were built together in
@@ -60,8 +61,13 @@ the MVP on branch `task/t000-first-mvp` and await review.
 
 **Next up** (no task files yet; create one before starting):
 
-1. Gemma on Modal works end to end, incl. the browser UI (T008). Left: tidy Finnish
-   wording (English archetype labels, "asuntolaina" for housing, € placement in English).
+1. Logic fix left from probing: share of income (shares are of spending today).
+2. Missing tools, most asked first: custom date ranges and calendar months, a list of
+   individual transactions, monthly averages, year-over-year, balance history. Until
+   then the coach says it cannot (safety net, T009). Done in T009: one weekday filter,
+   rent/bills out of day/time analysis, one "night" definition.
+3. Confirm the Finnish/Swedish glossary with native speakers (Q11); rerun
+   `apps/ai/eval/run_eval.py` after any prompt or model change.
 2. Safe-to-save tool.
 3. MCC filter in `explore_transactions` (taxis, pharmacies…).
 4. Open-data benchmarks from Statistics Finland.

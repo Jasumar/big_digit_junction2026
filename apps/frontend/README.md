@@ -19,12 +19,15 @@ No install. No automated UI tests; the API it uses is covered by the backend tes
 
 ## Language
 
-All fixed text is **English only** today: UI strings in `app.js`/`index.html`, chart
-labels and titles built in `apps/bank-backend/present.py`, and category names from the
-data ("Groceries"). Planned: string files for Finnish, Swedish and English, a fixed
-category-name table, and locale formatting of money and dates (Finnish: `1 234,50 €`,
-`14.11.2026`). Fixed text is translated with string files, not a model
-(`apps/ai/README.md` §Language).
+**Answer charts follow the answer's language** (en/fi/sv): the backend gets the language
+from the AI, and `apps/bank-backend/present.py` translates labels, category, basket and
+spender-type names (from `packages/cloud/glossary.py`) and formats money, percentages
+and dates (Finnish: `1 904 €`, `23 %`, `30.9.2026`). The answer JSON has `lang`.
+
+**Still English:** the home card, suggestion chips, placeholder and other fixed UI text
+in `app.js`/`index.html`. Next step: string files for fi/sv/en and a language choice
+(or follow the last answer's `lang`). Fixed text is translated with string files, not a
+model (`apps/ai/README.md` §Language).
 
 ## Conventions
 

@@ -124,7 +124,10 @@ def spending_breakdown(store, customer_id, args):
     prev_total = sum(r["amt"] for r in prev.values())
     buckets = _bucket_totals(cur)
     categories = []
-    for cat, r in sorted(cur.items(), key=lambda kv: -kv[1]["amt"]):
+    # every spending category, zeros included: a missing row reads as "unknown" to a model,
+    # a 0 reads as "you spent nothing" (charts skip the zero rows)
+    rows = {c: cur.get(c, {"amt": 0.0, "n": 0}) for c in SPEND_CATEGORIES}
+    for cat, r in sorted(rows.items(), key=lambda kv: -kv[1]["amt"]):
         p = prev.get(cat, {"amt": 0.0})["amt"]
         categories.append({
             "category": cat, "bucket": CATEGORY_BUCKET[cat], "amount": _r(r["amt"]),
@@ -134,11 +137,14 @@ def spending_breakdown(store, customer_id, args):
     return {
         **_period_info(c, period),
         "total_spend": _r(total), "previous_total_spend": _r(prev_total),
+        "change_amount": _r(total - prev_total),
         "change_pct": _pct(total - prev_total, prev_total) if prev_total else None,
         "income": _r(_income(store, customer_id, c["start"], c["end"])),
         "buckets": [{"bucket": b, "label": BUCKET_LABELS[b], "amount": _r(v),
                      "share_pct": _pct(v, total)} for b, v in buckets.items()],
         "categories": categories,
+        "notes": "share_pct is a share of total spending in the period, not of income. "
+                 "change_pct compares with the previous period of the same length.",
     }
 
 
@@ -149,7 +155,7 @@ def spender_profile(store, customer_id, args):
     agg = store.one(
         "SELECT COALESCE(-SUM(amount),0) AS total, COUNT(*) AS n,"
         " COALESCE(-SUM(CASE WHEN weekday >= 5 THEN amount END),0) AS weekend,"
-        " COALESCE(-SUM(CASE WHEN hour >= 22 OR hour < 5 THEN amount END),0) AS late,"
+        " COALESCE(-SUM(CASE WHEN hour >= 22 OR hour < 6 THEN amount END),0) AS late,"
         " COALESCE(-AVG(amount),0) AS avg_amt, COUNT(DISTINCT merchant_id) AS merchants"
         " FROM transactions WHERE customer_id = ? AND tx_date BETWEEN ? AND ?"
         " AND category IN " + _SPEND_IN + " AND tx_type = 'purchase'",
@@ -183,18 +189,19 @@ def spender_profile(store, customer_id, args):
         traits.append("%.0f%% of card spending happens late at night." % (100 * late_share))
 
     if shares[ESSENTIALS] >= 0.65:
-        archetype, why = "Squeezed by essentials", "Fixed costs take most of your money."
+        key, archetype, why = "squeezed", "Squeezed by essentials", "Fixed costs take most of your money."
     elif total and social / total >= 0.30:
-        archetype, why = "Social spender", "Eating out, fun and shopping are a big slice."
+        key, archetype, why = "social", "Social spender", "Eating out, fun and shopping are a big slice."
     elif weekend_share >= 0.40:
-        archetype, why = "Weekend splurger", "Your spending peaks on weekends."
+        key, archetype, why = "weekend", "Weekend splurger", "Your spending peaks on weekends."
     elif savings_rate is not None and savings_rate >= 0.15 and shares[EVERYDAY] <= 0.30:
-        archetype, why = "Steady planner", "You spend predictably and keep a healthy margin."
+        key, archetype, why = "planner", "Steady planner", "You spend predictably and keep a healthy margin."
     else:
-        archetype, why = "Balanced spender", "A mix of essentials and everyday spending."
+        key, archetype, why = "balanced", "Balanced spender", "A mix of essentials and everyday spending."
 
     return {
-        **_period_info(c, period), "archetype": archetype, "why": why, "traits": traits,
+        **_period_info(c, period), "archetype_key": key, "archetype": archetype, "why": why,
+        "traits": traits,
         "total_spend": _r(total), "monthly_spend": _r(total / months),
         "income": _r(income), "savings_rate_pct": _r(100 * savings_rate, 1)
         if savings_rate is not None else None,
@@ -207,9 +214,12 @@ def spender_profile(store, customer_id, args):
         "top_category": max(cur, key=lambda k: cur[k]["amt"]) if cur else None,
         "peer_group": {"age_band": cust["age_band"], "n": peer["n"] if peer else 0},
         "peer_monthly_spend_median": _r(peer["median_monthly"]) if peer else None,
+        "diff_vs_peer_median": _r(total / months - peer["median_monthly"]) if peer else None,
         "peer_bucket_median_monthly": {b: _r(p["median_monthly"]) if p else None
                                        for b, p in peer_buckets.items()},
         "monthly_by_bucket": {b: _r(v / months) for b, v in buckets.items()},
+        "notes": "savings_rate_pct = share of income left after spending (money moved to "
+                 "investments counts as saved). bucket_shares_pct are shares of spending.",
     }
 
 
@@ -271,7 +281,13 @@ def safe_to_spend(store, customer_id, args):
         "expected_essentials": _r(variable), "reserve_for_surprises": _r(reserve),
         "buffer": _r(buffer), "safe_to_spend": _r(safe),
         "safe_per_day": _r(safe / horizon), "typical_everyday_spend": _r(typical_everyday),
+        "typical_everyday_spend_per_day": _r(typical_everyday / horizon),
         "status": status,
+        "notes": "safe_per_day = safe_to_spend spread over the horizon_days (an allowance, "
+                 "not past spending). typical_everyday_spend = what the customer usually "
+                 "spends on everyday spending over the same number of days (the per-day figure is "
+                 "typical_everyday_spend_per_day). "
+                 "housing_due is rent/housing costs, not a loan.",
     }
 
 
@@ -317,6 +333,7 @@ def peer_comparison(store, customer_id, args):
                        "description": "customers aged %s" % cust["age_band"]},
         "monthly_spend": _r(mine_total),
         "peer_median_monthly_spend": _r(peer_total["median_monthly"]) if peer_total else None,
+        "diff_vs_peer_median": _r(mine_total - peer_total["median_monthly"]) if peer_total else None,
         "categories": rows,
     }
 
@@ -369,19 +386,21 @@ def savings_opportunities(store, customer_id, args):
     }
 
 
-_HOUR_BAND = ("CASE WHEN hour < 6 THEN 'night (0-6)' WHEN hour < 12 THEN 'morning (6-12)'"
-              " WHEN hour < 18 THEN 'afternoon (12-18)' ELSE 'evening (18-24)' END")
+_HOUR_BAND = ("CASE WHEN hour >= 22 OR hour < 6 THEN 'night (22-6)' WHEN hour < 12 THEN 'morning (6-12)'"
+              " WHEN hour < 18 THEN 'afternoon (12-18)' ELSE 'evening (18-22)' END")
 _WEEKDAY = ("CASE weekday WHEN 0 THEN 'Mon' WHEN 1 THEN 'Tue' WHEN 2 THEN 'Wed'"
             " WHEN 3 THEN 'Thu' WHEN 4 THEN 'Fri' WHEN 5 THEN 'Sat' ELSE 'Sun' END")
 _BUCKET_CASE = "CASE category %s ELSE 'other' END" % " ".join(
     "WHEN '%s' THEN '%s'" % (k, v) for k, v in CATEGORY_BUCKET.items())
 _GROUP_EXPR = {
-    "none": "'total'", "category": "category", "merchant": "COALESCE(merchant_id,'(no merchant)')",
+    "none": "'total'", "category": "category",
+    "merchant": "COALESCE(merchant_id,'(bills and transfers)')",
     "month": "substr(tx_date,1,7)", "day": "tx_date", "weekday": _WEEKDAY,
     "hour_band": _HOUR_BAND, "bucket": _BUCKET_CASE,
 }
 _CHRONO = ("month", "day")
-_HOUR_RANGE = {"night": (0, 5), "morning": (6, 11), "afternoon": (12, 17), "evening": (18, 23)}
+_HOUR_RANGE = {"night": None, "morning": (6, 11), "afternoon": (12, 17), "evening": (18, 21)}
+WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 
 
 def explore_transactions(store, customer_id, args):
@@ -389,7 +408,10 @@ def explore_transactions(store, customer_id, args):
     c = _ctx(store, customer_id, period)
     group_by = args.get("group_by", "category")
     metric = args.get("metric", "sum")
-    direction = args.get("direction", "spend")
+    direction = args.get("direction")
+    if direction is None:  # income/transfer categories are not spending; don't filter them out
+        cat = args.get("category")
+        direction = "all" if cat in INCOME_CATEGORIES or cat in TRANSFER_CATEGORIES else "spend"
     limit = int(args.get("limit", 10))
     where = ["customer_id = ?", "tx_date BETWEEN ? AND ?"]
     params = [customer_id, c["start"], c["end"]]
@@ -417,10 +439,23 @@ def explore_transactions(store, customer_id, args):
         where.append("weekday >= 5")
     elif args.get("day_type") == "weekday":
         where.append("weekday < 5")
+    if args.get("weekday"):
+        where.append("weekday = ?")
+        params.append(WEEKDAYS.index(args["weekday"]))
     if args.get("time_of_day"):
-        lo, hi = _HOUR_RANGE[args["time_of_day"]]
-        where.append("hour BETWEEN ? AND ?")
-        params += [lo, hi]
+        rng = _HOUR_RANGE[args["time_of_day"]]
+        if rng is None:  # night wraps midnight: 22:00-06:00
+            where.append("(hour >= 22 OR hour < 6)")
+        else:
+            where.append("hour BETWEEN ? AND ?")
+            params += list(rng)
+    # Day/time questions are about habits: scheduled rent and bills that happen to fall on
+    # a Saturday or at night are not behaviour. Same for "biggest purchase".
+    timing = (args.get("day_type") or args.get("weekday") or args.get("time_of_day")
+              or group_by in ("weekday", "day", "hour_band") or metric == "max")
+    purchases_only = bool(timing) and not args.get("include_bills") and direction == "spend"
+    if purchases_only:
+        where.append("tx_type = 'purchase'")
 
     value = {"sum": "SUM(ABS(amount))", "count": "COUNT(*)", "avg": "AVG(ABS(amount))",
              "max": "MAX(ABS(amount))"}[metric]
@@ -444,7 +479,13 @@ def explore_transactions(store, customer_id, args):
         **_period_info(c, period), "group_by": group_by, "metric": metric,
         "direction": direction,
         "filters": {k: args[k] for k in ("category", "bucket", "merchant_id", "min_amount",
-                                         "max_amount", "day_type", "time_of_day") if k in args},
+                                         "max_amount", "day_type", "weekday", "time_of_day")
+                    if k in args},
+        "purchases_only": purchases_only,
+        "notes": ("Card purchases only: rent, bills and transfers are left out of day/time "
+                  "analysis and of 'biggest purchase'." if purchases_only else
+                  "Includes rent, bills and transfers.") +
+                 " Weekend = Saturday and Sunday. Night = 22:00-06:00.",
         "groups": [{"key": r["key"], "label": labels.get(r["key"], r["key"]),
                     "value": _r(r["value"]), "count": r["n"]} for r in rows],
         "total": _r(tot["total"]), "count": tot["n"],
@@ -538,17 +579,21 @@ CATALOG = [
          period=_PERIOD), "required": ["change_pct"]}},
     {"name": "explore_transactions", "fn": explore_transactions,
      "description": "Free-form exploration of the customer's own transactions: filter by "
-                    "category, bucket, merchant, amount, weekday/weekend and time of day, "
+                    "category, bucket, amount, one weekday (e.g. friday), weekday/weekend "
+                    "(weekend = Saturday and Sunday) and time of day (night = 22-06); day "
+                    "and time questions count card purchases only (rent and bills left out "
+                    "unless include_bills=true), "
                     "then group (category, merchant, month, day, weekday, hour_band, bucket, "
                     "none) and aggregate (sum, count, avg, max).",
      "parameters": _params(
          period=_PERIOD,
          category={"type": "string", "enum": ALL_CATEGORIES},
          bucket={"type": "string", "enum": list(BUCKET_LABELS)},
-         merchant_id={"type": "string", "maxLength": 32},
          min_amount={"type": "number", "minimum": 0, "maximum": 1000000},
          max_amount={"type": "number", "minimum": 0, "maximum": 1000000},
          day_type={"type": "string", "enum": ["weekday", "weekend"]},
+         weekday={"type": "string", "enum": WEEKDAYS},
+         include_bills={"type": "boolean"},
          time_of_day={"type": "string", "enum": list(_HOUR_RANGE)},
          direction={"type": "string", "enum": ["spend", "income", "all"]},
          group_by={"type": "string", "enum": list(_GROUP_EXPR)},
