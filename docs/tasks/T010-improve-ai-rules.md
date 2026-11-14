@@ -1,6 +1,6 @@
 # T010 — Measure and improve the coach's rules and wording
 
-**Owner:** `TODO` **Status:** review
+**Owner:** `TODO` **Status:** merged
 **Branch:** `task/t009-improve-ai-rules` (renumbered T010 after the OpenRouter task took T009)
 
 ## Goal

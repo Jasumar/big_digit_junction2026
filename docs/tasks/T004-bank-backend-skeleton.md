@@ -1,6 +1,6 @@
 # T004 — S-pankki backend skeleton
 
-**Owner:** `TODO` **Status:** review (built in MVP, see Decisions.md)
+**Owner:** `TODO` **Status:** merged
 **Branch:** `task/t004-bank-backend-skeleton`
 
 ## Goal

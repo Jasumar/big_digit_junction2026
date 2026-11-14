@@ -1,6 +1,6 @@
 # T014 — Merchant Category Code reference data and subcategories
 
-**Owner:** `TODO` **Status:** review
+**Owner:** `TODO` **Status:** merged
 **Branch:** `task/t014-mcc-codes`
 
 ## Goal

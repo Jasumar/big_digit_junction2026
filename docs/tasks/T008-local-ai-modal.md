@@ -1,6 +1,6 @@
 # T008 — Gemma on Modal as the AI provider
 
-**Owner:** `TODO` **Status:** review
+**Owner:** `TODO` **Status:** merged
 **Branch:** `task/t008-local-ai-modal`
 
 ## Goal

@@ -1,6 +1,6 @@
 # T012 — UI language switch (Finnish, Swedish, English)
 
-**Owner:** `TODO` **Status:** review
+**Owner:** `TODO` **Status:** merged
 **Branch:** `task/t012-ui-language`
 
 ## Goal

@@ -1,6 +1,6 @@
 # T001 — Choose stack and transport for every part
 
-**Owner:** `TODO` **Status:** review (built in MVP, see Decisions.md)
+**Owner:** `TODO` **Status:** merged
 **Branch:** `docs/t001-choose-stack`
 
 ## Goal

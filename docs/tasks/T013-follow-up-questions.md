@@ -1,6 +1,6 @@
 # T013 — Follow-up questions (ported from feat/t009)
 
-**Owner:** `TODO` (feature design and first version: CuriousGeorg1) **Status:** review
+**Owner:** `TODO` (feature design and first version: CuriousGeorg1) **Status:** merged
 **Branch:** `task/t013-follow-up-questions`
 
 ## Goal

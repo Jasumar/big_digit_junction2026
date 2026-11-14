@@ -21,3 +21,6 @@ build/
 packages/cloud/data/
 __pycache__/
 *.pyc
+
+# demo script: kept local for now (team decision)
+docs/DEMO.md

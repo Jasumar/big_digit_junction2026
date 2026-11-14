@@ -1,6 +1,6 @@
 # T005 — Local AI model spike
 
-**Owner:** `TODO` **Status:** review (built in MVP, see Decisions.md)
+**Owner:** `TODO` **Status:** merged
 **Branch:** `spike/t005-local-ai`
 
 ## Goal
