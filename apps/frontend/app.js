@@ -160,10 +160,16 @@ function setBusy(b) {
   $("ask").querySelector("button").disabled = b;
 }
 
+function greet() {  // the chat opens as a conversation, not an empty box
+  const hello = el("div", "msg coach greeting");
+  hello.append(el("p", "", t("greeting")));
+  $("chat").replaceChildren(hello);
+}
+
 async function loadCustomer(id) {
   customerId = id;
   history = [];
-  $("chat").replaceChildren();
+  greet();
   $("home").replaceChildren(el("div", "skeleton", t("loading")));
   await refreshHome();
 }
@@ -212,6 +218,7 @@ async function setLanguage(lang) {
   t = makeT(lang);
   localStorage.setItem(LANG_KEY, lang);
   applyLanguage();
+  if (customerId && !history.length) greet();  // nothing asked yet: greet in the new language
   if (customerId) await refreshHome();  // basket names come from the backend glossary
 }
 

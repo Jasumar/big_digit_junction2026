@@ -24,13 +24,97 @@ BUCKET_WORDS = {
     "essentials": ("essential", "fixed cost", "regular bills"),
 }
 HELP = ("I can show where your money went, what kind of spender you are, what you can "
-        "safely spend this week, how you compare with others, where you could save, and "
-        "what-ifs like 'what if I cut restaurants by 20%?'. "
+        "safely spend this week, where you could save, what-ifs like 'what if I cut "
+        "restaurants by 20%?', and whether your finances could carry a big purchase like "
+        "'could I afford a €20,000 car?'. "
         "Try one of those, or ask about a category like restaurants or groceries.")
+GREETING = "Hi! I'm your money coach. "
+THANKS = "You're welcome! Anything else about your money? "
+
+# big purchases (T020): intent words and what is being bought, en/fi/sv
+_BUY = r"afford|\bbuy|purchase|\bvaraa\b|\bosta|\bhankki|mahtu|\bråd\b|\bköp|klara"
+_KINDS = (("home", r"\bhome|\bhouse|apartment|\bflat\b|\bcondo|asun|\btalo|kaksio|yksiö|"
+                   r"\bkoti|bostad|\bhus\b|lägenhet|villa"),
+          ("car", r"\bcar\b|\bauto|\bbil\b|\bbilen\b"))
+_MONEY = re.compile(r"(?<![\d.,])(\d{1,3}(?:[ ,.\u00a0]\d{3})+|\d+(?:[.,]\d+)?)\s*"
+                    r"(k\b|t\b|tuhat\w*|thousand|tusen)?")
+_DOWN = re.compile(r"(down|käsiraha|omarahoitus|omaa rahaa|kontantinsats|insats)")
+_YEARS = re.compile(r"(\d{1,2})[\s-]*(?:year|yr|vuo\w*|år)")
+_PURCHASE_TWEAK = re.compile(r"down|käsiraha|omarahoitus|kontantinsats|insats|year loan|"
+                             r"vuoden laina|laina-aika|års lån|interest|korko|ränta")
+
+
+def _amounts(text):
+    """[(value, start, end)] for money-looking numbers: '25 000 €', '€25,000', '300k'."""
+    out = []
+    for m in _MONEY.finditer(text.lower()):
+        raw, mult = m.group(1), m.group(2)
+        digits = re.sub(r"[ ,.\u00a0]", "", raw) if re.search(r"[ ,.\u00a0]\d{3}\b", raw) \
+            else raw.replace(",", ".")
+        try:
+            v = float(digits)
+        except ValueError:
+            continue
+        if mult:
+            v *= 1000
+        out.append((v, m.start(), m.end()))
+    return out
+
+
+def _purchase(text):
+    """Args for purchase_affordability from one message, or None if it is not about one."""
+    t = text.lower()
+    kind = next((k for k, rx in _KINDS if re.search(rx, t)), None)
+    if not (re.search(_BUY, t) and (kind or re.search(r"big purchase|iso hankinta|"
+                                                      r"stort köp", t))):
+        return None
+    args = {"kind": kind or "other"}
+    years = _YEARS.search(t)
+    if years:
+        args["loan_years"] = max(0, min(int(years.group(1)), 35))
+    amounts = [(v, st, en) for v, st, en in _amounts(t)
+               if not (years and st == years.start())]
+    downs = [v for v, st, en in amounts if _next_to_down(t, st, en)]
+    prices = [v for v, st, en in amounts if v >= 500 and v not in downs]
+    if prices:  # the largest amount: "a 2024 car for 18 000 €" costs 18 000 €
+        args["price"] = min(max(prices), 5000000.0)
+        if downs and downs[0] < args["price"]:
+            args["down_payment"] = downs[0]
+    return args
+
+
+def _next_to_down(t, start, end):
+    """'40 000 down', 'put 40k down', 'käsiraha 40 000', 'insats på 40 000'."""
+    return bool(_DOWN.search(t[end:end + 12]) or _DOWN.search(t[max(0, start - 16):start]))
+
+
+def _purchase_followup(text, history):
+    """'what if I put 40 000 down?' after a purchase question: earlier kind and price, the
+    new value on top."""
+    t = text.lower()
+    if not _PURCHASE_TWEAK.search(t):
+        return None
+    earlier = None
+    for h in reversed(history or []):
+        if h.get("role") == "user":
+            earlier = _purchase(h.get("text", ""))
+            if earlier:
+                break
+    if not earlier or "price" not in earlier:
+        return None
+    args = dict(earlier)
+    years = _YEARS.search(t)
+    if years:
+        args["loan_years"] = max(0, min(int(years.group(1)), 35))
+    for v, start, end in _amounts(t):
+        if v >= 100 and not (years and start == years.start()) and _DOWN.search(t):
+            args["down_payment"] = min(v, args["price"])
+            break
+    return args
 
 
 def eur(x):
-    return "€{:,.0f}".format(x)
+    return ("-" if round(x) < 0 else "") + "€{:,.0f}".format(abs(x))
 
 
 def _dedupe_follow_ups(items):
@@ -107,6 +191,9 @@ class Provider:
         p = {"period": period} if period else {}
         cat = _category(text)
 
+        purchase = _purchase(text) or _purchase_followup(text, history)
+        if purchase:
+            return {"requests": [{"tool": "purchase_affordability", "args": purchase}]}
         what_if = _what_if(text)
         if what_if:
             return {"requests": [{"tool": "simulate_change", "args": what_if}]}
@@ -145,6 +232,10 @@ class Provider:
         if re.search(r"where|money go|spend|spent|spending|breakdown|categor|essential|"
                      r"necessit|everyday|expens", t):
             return {"requests": [{"tool": "spending_breakdown", "args": p}]}
+        if re.search(r"^\W*(hi|hello|hey|moi|hei|terve|hej|hallå)\b", t):
+            return {"requests": [], "reply": GREETING + HELP}
+        if re.search(r"\b(thanks|thank you|kiitos|tack)\b", t):
+            return {"requests": [], "reply": THANKS}
         return {"requests": [], "reply": HELP}
 
     # ------------------------------------------------------------ step 6
@@ -286,6 +377,60 @@ class Provider:
                         d["from"], d["to"], d["note"])})
         return text, ins
 
+    _VERDICT = {
+        "fits": "On your last 12 months' numbers, this fits",
+        "stretch": "On your last 12 months' numbers this could work, but it would be a stretch",
+        "save_first": "Your monthly money could carry it, but your savings don't cover the "
+                      "down payment and a safety buffer yet",
+        "over_budget": "On your last 12 months' numbers, this doesn't fit your monthly "
+                       "money right now",
+    }
+    _THING = {"home": "a home", "car": "a car", "other": "this purchase"}
+
+    def _purchase_affordability(self, d):
+        a = d["assumptions"]
+        thing = self._THING[d["kind"]]
+        if d["status"] == "range_only":
+            if not d["max_price_estimate"]:
+                text = ("Right now your savings above a safety buffer don't cover a down "
+                        "payment for %s, so I can't show a price range yet." % thing)
+            else:
+                text = ("With your current savings and monthly money, %s up to about %s "
+                        "would fit the same rules" % (thing, eur(d["max_price_estimate"])))
+                text += (" (%d-year loan at %g%% interest)." % (a["loan_years"],
+                                                                  a["interest_rate_pct"])
+                         if a["loan_years"] else ", paid in cash.")
+            return text + " What price do you have in mind?", []
+        text = "%s: %s for %s." % (self._VERDICT[d["status"]], thing, eur(d["price"]))
+        if d["monthly_payment"]:
+            text += " The loan would cost about %s a month over %d years at %g%%." % (
+                eur(d["monthly_payment"]), a["loan_years"], a["interest_rate_pct"])
+        after = d["monthly_margin_after"]
+        text += (" You'd have about %s left each month afterwards (now %s)." % (
+            eur(after), eur(d["monthly_margin"])) if after >= 0 else
+            " You'd be about %s short each month afterwards (now %s left over)." % (
+            eur(-after), eur(d["monthly_margin"])))
+        text += " This is an illustration from your own data, not a loan decision — the " \
+                "choice is yours."
+        ins = []
+        if d["savings_gap"]:
+            body = "%s more for the down payment and a %d-month buffer" % (
+                eur(d["savings_gap"]), a["buffer_months"])
+            body += (", about %d months at your current pace." % d["months_to_close_gap"]
+                     if d["months_to_close_gap"] else ".")
+            ins.append({"title": "Still to save", "kind": "warn", "body": body})
+        if d["monthly_margin_after_stress"] is not None:
+            m = d["monthly_margin_after_stress"]
+            ins.append({"title": "If interest rose to %g%%" % a["stress_rate_pct"],
+                        "kind": "good" if m >= 0 else "warn",
+                        "body": ("You'd still have %s left each month." % eur(m)) if m >= 0
+                        else "You'd be about %s short each month." % eur(-m)})
+        if d["housing_cost_freed"]:
+            ins.append({"title": "Rent you'd stop paying", "kind": "info",
+                        "body": "About %s a month is counted as freed up." % eur(
+                            d["housing_cost_freed"])})
+        return text, ins[:3]
+
     def _explore_transactions(self, d):
         flt = ", ".join("%s=%s" % kv for kv in d["filters"].items()) or "all spending"
         if not d["count"]:
@@ -318,8 +463,8 @@ class Provider:
     def _followups_spender_profile(self, d):
         return [{"kind": "explore", "label": "How could I save more?",
                  "prompt": "How could I save more?"},
-                {"kind": "explore", "label": "How do I compare to others?",
-                 "prompt": "How do I compare to others?"}]
+                {"kind": "explore", "label": "Spending more than before?",
+                 "prompt": "Am I spending more than before?"}]
 
     def _followups_safe_to_spend(self, d):
         if d["status"] in ("tight", "very_tight"):
@@ -332,6 +477,22 @@ class Provider:
         return [{"kind": "clarify", "label": "Cut back on %s" % i["category"],
                  "prompt": "What if I cut %s by 20%%?" % i["category"]}
                 for i in d["ideas"][:2]]
+
+    def _followups_purchase_affordability(self, d):
+        thing = {"home": "home", "car": "car", "other": "big purchase"}[d["kind"]]
+        if d["status"] == "range_only":
+            return [{"kind": "explore", "label": "How could I save more?",
+                     "prompt": "How could I save more?"}]
+        out = [{"kind": "explore", "label": "What price could I afford?",
+                "prompt": "How expensive a %s could I afford?" % thing}]
+        if d["kind"] == "home" and d["assumptions"]["loan_years"] < 30:
+            out.append({"kind": "clarify", "label": "With a 30-year loan?",
+                        "prompt": "Could I afford a home for %s with a 30-year loan?"
+                                  % eur(d["price"])})
+        if d["status"] in ("save_first", "over_budget", "stretch"):
+            out.append({"kind": "explore", "label": "How could I save more?",
+                        "prompt": "How could I save more?"})
+        return out
 
     def _followups_simulate_change(self, d):
         return [{"kind": "explore", "label": "How could I save more?",

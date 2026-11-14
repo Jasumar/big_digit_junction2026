@@ -50,6 +50,19 @@ RULES = [  # (key, regex on lower-cased question)
                      r"kehity)"),
 ]
 
+# Big-purchase questions (T020) are answerable: "within my budget" there is not a request
+# to store a budget, and "a 2024 car" is not a calendar-year comparison.
+PURCHASE = (r"afford|\bbuy|purchase|\bvaraa\b|\bosta|\bhankki|mahtu|\bråd\b|\bköp|klara")
+PURCHASE_THING = (r"\bhome|\bhouse|apartment|\bflat\b|\bcondo|\bcar\b|asun|\btalo|kaksio|"
+                  r"yksiö|\bauto|\bkoti|bostad|\bhus\b|lägenhet|villa|\bbil\b|\bbilen\b")
+_PURCHASE_SKIPS = ("store", "year")
+
+
+def is_purchase(question):
+    q = (question or "").lower()
+    return bool(re.search(PURCHASE, q) and re.search(PURCHASE_THING, q))
+
+
 TEXT = {
     "others": {"fi": "Näen vain sinun omat tietosi – en vertaa sinua muihin asiakkaisiin, en edes keskiarvoina. Voin verrata kulutustasi omaan aiempaan kulutukseesi.",
                "sv": "Jag ser bara dina egna uppgifter – jag jämför dig inte med andra kunder, inte ens som genomsnitt. Jag kan jämföra dina utgifter med dina egna tidigare utgifter.",
@@ -97,7 +110,10 @@ def limitation(question, lang, data_as_of):
         for m, stems in MONTHS.items():
             if m not in ok and any(s in q for s in stems):
                 return TEXT["month"][lang]
+    purchase = is_purchase(question)
     for key, rx in RULES:
+        if purchase and key in _PURCHASE_SKIPS:
+            continue
         if re.search(rx, q):
             return TEXT[key][lang]
     return ""

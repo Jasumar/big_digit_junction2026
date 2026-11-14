@@ -31,7 +31,9 @@ PLAN_SYSTEM = (
     "at most 3, and only when the answer requires their data. Fill each tool's arguments "
     "exactly per its parameter schema - never invent a field name, never pass a customer "
     "id, never pass null. If the message is small talk, a greeting, or something no tool "
-    "can answer, call no tool and reply briefly in the customer's language instead."
+    "can answer, call no tool and reply briefly in the customer's language instead. "
+    "Big purchases (a home, a car): call purchase_affordability with kind and price; "
+    "for a follow-up that changes one thing, repeat the earlier kind and price."
 )
 
 COMPOSE_SYSTEM = (
@@ -44,7 +46,10 @@ COMPOSE_SYSTEM = (
     "date or merchant. If a result has ok=false it was refused or failed: say plainly that "
     "this part cannot be shown. Be warm, concrete and short: 2-4 sentences. Write every "
     "amount in the bank's European style, in any language: space as thousands separator, "
-    "comma decimals (2 541,89 €).\n\n"
+    "comma decimals (2 541,89 €). Sound like a person in a chat, not a report. "
+    "For big purchases never tell the customer to buy or not to buy and never promise a "
+    "loan: say what their own numbers show, name the assumptions, leave the decision to "
+    "them.\n\n"
     "Answer with JSON only, no prose outside it:\n"
     '{"text": "...", "insights": [{"title": "...", "body": "...", "kind": "info"}]}\n'
     "1-3 insights; kind is one of info, good, warn, tip."

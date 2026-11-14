@@ -557,6 +557,190 @@ def simulate_change(store, customer_id, args):
     }
 
 
+# ---------------------------------------------------------------- big purchases (T020)
+
+# Assumptions per kind of purchase. Market figures, not other customers' data (T017);
+# every one is returned in `assumptions` so the coach states them, and the customer can
+# override price, down payment, loan years, interest and running costs.
+PURCHASE_KINDS = {
+    # home: Finnish loan cap 90% (first home 95%); banks stress-test at 6% interest;
+    # upkeep (maintenance charge, insurance, repairs) about 1.5% of the price a year
+    "home": {"down_pct": 10.0, "loan_years": 25, "rate_pct": 3.5, "stress_rate_pct": 6.0,
+             "running_pct_year": 1.5, "running_monthly": None, "round_to": 1000},
+    # car: a typical car loan; running costs (insurance, tax, service) as a flat monthly
+    "car": {"down_pct": 20.0, "loan_years": 5, "rate_pct": 6.0, "stress_rate_pct": None,
+            "running_pct_year": None, "running_monthly": 200.0, "round_to": 500},
+    # anything else (renovation, boat, big trip): paid in cash unless loan_years is given
+    "other": {"down_pct": 0.0, "loan_years": 0, "rate_pct": 6.0, "stress_rate_pct": None,
+              "running_pct_year": None, "running_monthly": 0.0, "round_to": 100},
+}
+BUFFER_MONTHS = 3          # emergency buffer kept after the purchase: months of essentials
+PAYMENT_SHARE_OK = 30.0    # loan payment as % of income: up to this is comfortable
+PAYMENT_SHARE_MAX = 40.0   # above this the monthly side does not fit
+
+
+def _annuity(loan, rate_pct, years):
+    """Monthly payment of an annuity loan."""
+    if loan <= 0 or years <= 0:
+        return 0.0
+    n, r = years * 12, rate_pct / 100.0 / 12
+    return loan / n if r == 0 else loan * r / (1 - (1 + r) ** -n)
+
+
+def purchase_affordability(store, customer_id, args):
+    """Could the customer's own finances carry a big purchase (home, car, other)? An
+    illustration from their last 12 months, never a loan decision or advice to buy."""
+    kind = args.get("kind", "other")
+    k = PURCHASE_KINDS[kind]
+    price = float(args["price"]) if "price" in args else None
+    years = int(args.get("loan_years", k["loan_years"]))
+    rate = float(args.get("interest_rate_pct", k["rate_pct"]))
+    stress = k["stress_rate_pct"] if years and k["stress_rate_pct"] else None
+    if stress is not None:
+        stress = max(stress, rate)
+
+    c = _ctx(store, customer_id, "last_12_months")
+    months = c["days"] / DAYS_PER_MONTH
+    by_cat = _spend_by_category(store, customer_id, c["start"], c["end"])
+    income_m = _income(store, customer_id, c["start"], c["end"]) / months
+    spend_m = sum(r["amt"] for r in by_cat.values()) / months
+    essentials_m = _bucket_totals(by_cat)[ESSENTIALS] / months
+    housing_m = by_cat.get("Housing", {"amt": 0.0})["amt"] / months
+    margin_m = income_m - spend_m  # money moved to investments counts as kept
+    balance = store.one("SELECT balance_after AS b FROM transactions WHERE customer_id = ?"
+                        " ORDER BY tx_ts DESC, id DESC LIMIT 1", (customer_id,))["b"]
+    invested = store.one(
+        "SELECT COALESCE(-SUM(CASE WHEN category = 'Invest Deposit' THEN amount END),0)"
+        " - COALESCE(SUM(CASE WHEN category = 'Invest Withdraw' THEN amount END),0) AS v"
+        " FROM transactions WHERE customer_id = ? AND tx_date BETWEEN ? AND ?",
+        (customer_id, c["start"], c["end"]))["v"]
+    buffer = BUFFER_MONTHS * essentials_m
+    # a home usually replaces today's rent; other purchases come on top of it
+    replaces = bool(args.get("replaces_housing", kind == "home"))
+    freed_m = housing_m if replaces else 0.0
+
+    def running(p):
+        if "running_costs_monthly" in args:
+            return float(args["running_costs_monthly"])
+        if k["running_pct_year"] is not None:
+            return p * k["running_pct_year"] / 100.0 / 12
+        return k["running_monthly"]
+
+    # savings the customer says they hold elsewhere (funds, other banks): their own word,
+    # used as given; the bank cannot see or value them
+    other = float(args.get("other_savings", 0.0))
+    cash = max(0.0, balance + other - buffer)
+    # the largest price the same rules allow (down payment from savings above the buffer,
+    # payment within PAYMENT_SHARE_OK of income and within the monthly margin)
+    down_frac = (k["down_pct"] if years else 100.0) / 100.0
+    max_price = cash
+    if years:
+        f_rate = _annuity(1.0, rate, years)  # monthly payment per euro of loan
+        f_worst = _annuity(1.0, stress, years) if stress else f_rate
+
+        def fits(p):  # down payment from cash, loan payment within both limits
+            loan = p * (1 - down_frac)
+            room = margin_m + freed_m - running(p)
+            return (p * down_frac <= cash
+                    and loan * f_rate <= PAYMENT_SHARE_OK / 100.0 * income_m
+                    and loan * f_worst <= room)
+        # fits() only gets harder as the price grows
+        lo, hi = 0.0, (cash / down_frac if down_frac
+                       else cash + PAYMENT_SHARE_OK / 100.0 * income_m / f_rate)
+        for _ in range(60):
+            mid = (lo + hi) / 2
+            lo, hi = (mid, hi) if fits(mid) else (lo, mid)
+        max_price = lo
+    step = k["round_to"]
+    max_price = step * int(max_price // step)
+
+    out = {
+        "kind": kind, "period": "last_12_months", "from": c["start"], "to": c["end"],
+        "monthly_income": _r(income_m), "monthly_spend": _r(spend_m),
+        "monthly_margin": _r(margin_m), "monthly_housing_now": _r(housing_m),
+        "monthly_essentials": _r(essentials_m), "balance": _r(balance),
+        "moved_to_investments_12m": _r(invested),
+        "other_savings_stated": _r(other),
+        "emergency_buffer": _r(buffer), "max_price_estimate": _r(max_price),
+        "assumptions": {
+            "down_payment_pct": k["down_pct"] if years else 100.0, "loan_years": years,
+            "interest_rate_pct": _r(rate, 2), "stress_rate_pct": stress,
+            "running_costs_monthly": _r(running(price if price else max_price)),
+            "replaces_current_housing": replaces, "buffer_months": BUFFER_MONTHS,
+            "comfortable_payment_share_pct": PAYMENT_SHARE_OK,
+        },
+        "notes": "An illustration from the customer's own last 12 months, not a loan "
+                 "decision and not advice to buy or not to buy: the decision is the "
+                 "customer's, and a real loan offer needs the bank's own assessment. "
+                 "monthly_margin = income minus spending (money moved to investments "
+                 "counts as kept). emergency_buffer = buffer_months of regular essentials, "
+                 "kept aside after the down payment. moved_to_investments_12m is money "
+                 "they moved to investments; its current value is unknown and it is not "
+                 "counted as available cash unless the customer states it as "
+                 "other_savings_stated. Interest, stress rate and running costs are "
+                 "assumptions: say so. max_price_estimate uses the same rules.",
+    }
+    if price is None:
+        out["status"] = "range_only"
+        return out
+
+    down = float(args["down_payment"]) if "down_payment" in args else (
+        price * (k["down_pct"] if years else 100.0) / 100.0)
+    down = min(down, price)
+    loan = price - down if years else 0.0
+    if not years:
+        down = price
+    payment = _annuity(loan, rate, years)
+    stress_payment = _annuity(loan, stress, years) if stress else None
+    run_m = running(price)
+    margin_after = margin_m + freed_m - payment - run_m
+    stress_margin = (margin_m + freed_m - stress_payment - run_m) if stress else None
+    gap = max(0.0, down + buffer - balance - other)
+    share = _pct(payment, income_m) if income_m else None
+
+    reasons = []
+    if gap > 0:
+        reasons.append("savings_short")
+    if margin_after < 0:
+        reasons.append("monthly_negative")
+    if share is not None and share > PAYMENT_SHARE_MAX:
+        reasons.append("payment_share_high")
+    elif share is not None and share > PAYMENT_SHARE_OK:
+        reasons.append("payment_share_stretch")
+    if stress_margin is not None and stress_margin < 0:
+        reasons.append("stress_test_negative")
+    if 0 <= margin_after < 0.05 * income_m:
+        reasons.append("thin_margin")
+    if "monthly_negative" in reasons or "payment_share_high" in reasons:
+        status = "over_budget"
+    elif "savings_short" in reasons:
+        status = "save_first"
+    elif reasons:
+        status = "stretch"
+    else:
+        status = "fits"
+    months_to_save = (int(-(-gap // margin_m)) if gap > 0 and margin_m > 0 else None)
+    if gap > 0 and (months_to_save is None or months_to_save > 120):
+        reasons.append("slow_to_save")  # not within 10 years at today's pace
+        months_to_save = None
+
+    out.update({
+        "status": status, "reasons": reasons,
+        "price": _r(price), "down_payment": _r(down), "loan_amount": _r(loan),
+        "monthly_payment": _r(payment),
+        "monthly_payment_stress": _r(stress_payment) if stress_payment is not None else None,
+        "running_costs_monthly": _r(run_m), "housing_cost_freed": _r(freed_m),
+        "monthly_margin_after": _r(margin_after),
+        "monthly_margin_after_stress": _r(stress_margin) if stress_margin is not None else None,
+        "payment_share_of_income_pct": share,
+        "loan_to_yearly_income": _r(loan / (12 * income_m), 1) if income_m and loan else None,
+        "cash_after_down_payment": _r(balance + other - down),
+        "savings_gap": _r(gap), "months_to_close_gap": months_to_save,
+        "total_interest": _r(payment * years * 12 - loan) if loan else 0.0,
+    })
+    return out
+
+
 # ---------------------------------------------------------------- catalog
 
 _PERIOD = {"type": "string", "enum": PERIODS}
@@ -625,6 +809,26 @@ CATALOG = [
          metric={"type": "string", "enum": ["sum", "count", "avg", "max"]},
          order={"type": "string", "enum": ["asc", "desc"]},
          limit={"type": "integer", "minimum": 1, "maximum": 36})},
+    {"name": "purchase_affordability", "fn": purchase_affordability,
+     "description": "Big purchases (a home, a car, anything else): could the customer's own "
+                    "finances carry a purchase of this price? From their last 12 months: "
+                    "income, spending, monthly margin, balance; down payment, loan payment "
+                    "(annuity), running costs, margin after the purchase, an interest "
+                    "stress test for homes, an emergency buffer, the savings gap and months "
+                    "to close it. Without price it gives only max_price_estimate (how "
+                    "expensive a purchase the same rules allow). A home replaces current "
+                    "rent unless replaces_housing=false. other_savings = savings the "
+                    "customer says they have elsewhere (funds, other banks). An "
+                    "illustration, never a loan decision or advice to buy.",
+     "parameters": _params(
+         kind={"type": "string", "enum": list(PURCHASE_KINDS)},
+         price={"type": "number", "minimum": 1, "maximum": 5000000},
+         down_payment={"type": "number", "minimum": 0, "maximum": 5000000},
+         loan_years={"type": "integer", "minimum": 0, "maximum": 35},
+         interest_rate_pct={"type": "number", "minimum": 0, "maximum": 20},
+         running_costs_monthly={"type": "number", "minimum": 0, "maximum": 20000},
+         other_savings={"type": "number", "minimum": 0, "maximum": 5000000},
+         replaces_housing={"type": "boolean"})},
 ]
 TOOLS = {t["name"]: t for t in CATALOG}
 
