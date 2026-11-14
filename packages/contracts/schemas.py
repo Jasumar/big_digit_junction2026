@@ -112,6 +112,8 @@ ANSWER = {
         "data_as_of": {"type": "string"},  # last date in the customer's data
         # 0-3 suggested next questions, in the answer's language, all answerable
         "follow_ups": {"type": "array", "maxItems": 3, "items": FOLLOW_UP},
+        # one short question that keeps the conversation going, shown last (T021)
+        "closing": {"type": "string", "maxLength": 300},
     },
 }
 
@@ -129,6 +131,7 @@ EXAMPLES = {
         "provider": "stub",
         "follow_ups": [{"kind": "explore", "label": "How could I save more?",
                         "prompt": "How could I save more?"}],
+        "closing": "Would you like to see which category grew the most?",
     },
 }
 

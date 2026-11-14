@@ -113,7 +113,8 @@ class TestLLMProvider(unittest.TestCase):
         self.assertEqual(a["trace"][0], {"tool": "simulate_change", "approved": True,
                                          "note": "ok"})
         self.assertTrue(a["visuals"])  # charts still come from the backend
-        self.assertEqual(a["lang"], "en")  # the fake reply had no lang -> English charts
+        # the fake reply had no lang; the question is Finnish, so the answer is Finnish (T021)
+        self.assertEqual(a["lang"], "fi")
         sent = json.loads(FakeLLM.seen[1][1]["messages"][-1]["content"].split("(JSON):\n")[1])
         self.assertNotIn("CUST00001", json.dumps(sent))  # results only, no customer id
 

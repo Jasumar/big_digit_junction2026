@@ -116,6 +116,7 @@ function renderAnswer(a) {
     if (i.body) d.append(document.createTextNode(i.body));
     box.append(d);
   }
+  if (a.closing) box.append(el("p", "closing", a.closing));  // keeps the chat going (T021)
   if (a.follow_ups && a.follow_ups.length) {  // tappable next questions (idea: CuriousGeorg1)
     const row = el("div", "followups");
     for (const f of a.follow_ups) {
@@ -146,7 +147,9 @@ async function ask(text) {
   setBusy(true);
   try {
     const a = await api.command(customerId, text, history, t.lang);
-    history.push({ role: "user", text }, { role: "coach", text: a.text });
+    // the closing question is part of what the coach said, so "yes" can answer it
+    history.push({ role: "user", text },
+                 { role: "coach", text: a.closing ? a.text + " " + a.closing : a.text });
     wait.replaceWith(renderAnswer(a));
   } catch (e) {
     wait.replaceWith(el("div", "msg coach err", e.message));

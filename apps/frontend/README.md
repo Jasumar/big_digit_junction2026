@@ -38,6 +38,12 @@ for the AI. Add a UI text: add the key to all three languages in `i18n.js` —
 is `{text, insights, visuals, trace}`; visuals are `stats`, `bars`, `table` — to add a
 visual type, add it in `bank-backend/present.py` and in `renderVisual`.
 
+## Closing question
+
+`answer.closing` (T021) is shown last in the answer bubble, after charts and insights and
+just above the follow-up buttons, in bold. It is added to the chat history with the
+answer text, so a reply like "yes" or "kyllä" continues that thread.
+
 ## Follow-up questions
 
 `renderAnswer` shows `answer.follow_ups` as buttons under the answer ("clarify" ones in

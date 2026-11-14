@@ -696,6 +696,61 @@ class TestNoOtherCustomersData(Base):
         self.assertEqual(kept, [])
 
 
+class TestClosingQuestion(Base):
+    """T021: every answer ends with one question that keeps the conversation going."""
+
+    def test_every_answer_has_a_valid_closing(self):
+        for q in ("Where did my money go?", "What kind of spender am I?",
+                  "How could I save more?", "What can I safely spend this week?",
+                  "Write me a poem", "hello"):
+            a = self.ask(q)
+            self.assertTrue(a["closing"].endswith("?"), (q, a["closing"]))
+            self.assertEqual(validate(ANSWER, a), [], q)
+            self.assertFalse(a["text"].rstrip().endswith("?"), (q, a["text"]))
+
+    def test_model_closing_kept_when_valid(self):
+        import closing
+        text, c = closing.finish({"lang": "en", "text": "You spent a lot on food."},
+                                 "Would you like to see your restaurant spending by month?",
+                                 "Where did my money go?", "2026-09-30", [])
+        self.assertEqual(c, "Would you like to see your restaurant spending by month?")
+        self.assertEqual(text, "You spent a lot on food.")
+
+    def test_bad_closings_fall_back_to_generic(self):
+        import closing
+        bad = ("Haluatko asettaa budjetin ravintoloille?",       # unsupported (budgets)
+               "Would you like to save 4 321 € a year?",          # number not in results
+               "Haluatko nähdä ravintolakulusi?",                 # Finnish in an English answer
+               "Show me more.",                                   # not a question
+               "Want to see MRC-RES-0018 visits?")                # merchant id
+        for b in bad:
+            _, c = closing.finish({"lang": "en", "text": "Done."}, b, "x", "2026-09-30", [])
+            self.assertIn(c, closing.GENERIC["en"], b)
+
+    def test_question_in_text_moves_to_closing(self):
+        import closing
+        text, c = closing.finish(
+            {"lang": "fi", "text": "Käytit eniten asumiseen. Onko sinulla säästöjä muualla?"},
+            "", "Mihin rahani menivät?", "2026-09-30", [])
+        self.assertEqual(text, "Käytit eniten asumiseen.")
+        self.assertEqual(c, "Onko sinulla säästöjä muualla?")
+
+    def test_closing_not_repeated_in_one_chat(self):
+        import closing
+        asked = "Would you like to see your restaurant spending by month?"
+        history = [{"role": "user", "text": "Where did my money go?"},
+                   {"role": "coach", "text": "You spent most on housing. " + asked}]
+        _, c = closing.finish({"lang": "en", "text": "OK."}, asked, "And last month?",
+                              "2026-09-30", [], history)
+        self.assertIn(c, closing.GENERIC["en"])
+
+    def test_generic_in_each_language(self):
+        import closing
+        for lang in ("fi", "sv", "en"):
+            _, c = closing.finish({"lang": lang, "text": "OK."}, None, "q", "2026-09-30", [])
+            self.assertIn(c, closing.GENERIC[lang])
+
+
 class TestGemma4Fixes(Base):
     """Model-agnostic fixes found when evaluating Gemma 4 (T016)."""
 

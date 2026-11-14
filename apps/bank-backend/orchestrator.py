@@ -2,6 +2,7 @@
 import sys
 
 import approval
+import closing
 import followups
 import present
 import scope
@@ -97,6 +98,9 @@ def handle_command(command, store, provider):
     rule_based = followups.fallback(results, lang) if any(r.get("ok") for r in results) else []
     answer["follow_ups"] = followups.clean(list(composed.get("follow_ups") or []) + rule_based,
                                            command["text"], lang, as_of, known)
+    # every answer ends with a question that keeps the conversation going (T021)
+    answer["text"], answer["closing"] = closing.finish(
+        answer, composed.get("closing"), command["text"], as_of, known, history)
     return answer
 
 

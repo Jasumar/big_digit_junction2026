@@ -150,11 +150,14 @@ def drop_foreign_terms(answer):
 _LANG_WORDS = {
     "fi": {"paljonko", "mihin", "miten", "millainen", "mitä", "olen", "minun", "rahani",
            "kuussa", "viime", "tässä", "voin", "kulutin", "käytin", "jos", "eilen", "onko",
-           "kuinka", "näytä", "minä", "vuonna", "kannattaa", "sijoittanut", "säästää"},
+           "kuinka", "näytä", "minä", "vuonna", "kannattaa", "sijoittanut", "säästää",
+           "haluatko", "voinko", "katsotaanko", "näytänkö", "kerronko", "muuta", "vielä"},
     "sv": {"hur", "mycket", "vart", "mina", "pengar", "jag", "kan", "den", "här", "månaden",
-           "veckan", "vilken", "är", "spendera", "spara", "igår", "förra", "visa"},
+           "veckan", "vilken", "är", "spendera", "spara", "igår", "förra", "visa",
+           "vill", "du", "något", "annat", "mer", "titta"},
     "en": {"how", "much", "what", "where", "did", "spend", "spent", "my", "money", "can",
-           "this", "last", "month", "week", "the", "yesterday", "show", "could", "save"},
+           "this", "last", "month", "week", "the", "yesterday", "show", "could", "save",
+           "would", "you", "like", "want", "see", "else", "anything"},
 }
 
 
