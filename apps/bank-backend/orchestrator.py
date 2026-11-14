@@ -6,6 +6,7 @@ import present
 import scope
 from ai.grounding import known_numbers, strip_unbacked
 from calculation import tools
+from cloud import glossary
 from contracts import COMMAND, PLAN, validate
 
 SAFE_TEXT = {
@@ -33,7 +34,8 @@ def handle_command(command, store, provider):
     as_of = store.as_of(customer_id)
     first = store.one("SELECT MIN(tx_date) AS d FROM transactions WHERE customer_id = ?",
                       (customer_id,))["d"]
-    context = {"data_from": first, "data_as_of": as_of}
+    ui_lang = command.get("lang") or "en"
+    context = {"data_from": first, "data_as_of": as_of, "ui_lang": ui_lang}
 
     # step 2: the model decides what to calculate
     plan = provider.plan(command["text"], tools.describe_catalog(), history, context)
@@ -56,7 +58,7 @@ def handle_command(command, store, provider):
 
     # Limits are decided in code: the model both missed real limits ("March?") and invented
     # false ones ("last month" refused). Its own limitation is used only for no-tool replies.
-    limitation = scope.limitation(command["text"], plan.get("lang"), as_of)
+    limitation = scope.limitation(command["text"], plan.get("lang") or ui_lang, as_of)
     if not limitation and not requests and plan.get("coverage") == "none":
         limitation = (plan.get("limitation") or "").strip()
     context["limitation"] = limitation
@@ -68,7 +70,7 @@ def handle_command(command, store, provider):
         composed = {"text": plan.get("reply") or "I can help with questions about your "
                                                   "spending.", "insights": [],
                     "lang": plan.get("lang")}
-    lang = composed.get("lang") if composed.get("lang") in ("en", "fi", "sv") else "en"
+    lang = composed.get("lang") if composed.get("lang") in ("en", "fi", "sv") else ui_lang
     composed["lang"] = lang
 
     # safety net for every provider: no number may appear that the tools did not produce
@@ -116,8 +118,9 @@ def _run_requests(requests, store, customer_id):
     return results, trace
 
 
-def overview(customer_id, store):
-    """Home-screen data. Goes through the same approval and tools as a command."""
+def overview(customer_id, store, lang="en"):
+    """Home-screen data. Goes through the same approval and tools as a command.
+    `bucket_labels` are the basket names in `lang`, from the shared glossary."""
     cust = store.customer(customer_id)
     if not cust:
         raise BadCommand("unknown customer")
@@ -128,4 +131,7 @@ def overview(customer_id, store):
                                     "args": {"period": "last_30_days"}})):
         ok, reason = approval.check(req, customer_id)
         out[key] = tools.run(req["tool"], store, customer_id, req["args"]) if ok else None
+    lang = lang if lang in ("en", "fi", "sv") else "en"
+    out["bucket_labels"] = {b: glossary.bucket(b, lang)
+                            for b in ("essentials", "necessities", "everyday")}
     return out

@@ -24,10 +24,13 @@ from the AI, and `apps/bank-backend/present.py` translates labels, category, bas
 spender-type names (from `packages/cloud/glossary.py`) and formats money, percentages
 and dates (Finnish: `1 904 €`, `23 %`, `30.9.2026`). The answer JSON has `lang`.
 
-**Still English:** the home card, suggestion chips, placeholder and other fixed UI text
-in `app.js`/`index.html`. Next step: string files for fi/sv/en and a language choice
-(or follow the last answer's `lang`). Fixed text is translated with string files, not a
-model (`apps/ai/README.md` §Language).
+**UI language switch** (T012): FI / SV / EN in the header; Finnish by default; the choice
+is saved in the browser (`localStorage` key `coach.lang`). `i18n.js` holds every fixed text
+(placeholder, suggestion chips, home card, messages) and formats money, percentages and
+dates per language; basket names on the home card come from the backend glossary
+(`/api/overview?lang=`). The selected language is sent with each question as a fallback
+for the AI. Add a UI text: add the key to all three languages in `i18n.js` —
+`apps/frontend/i18n.test.mjs` (run by `scripts/test.sh`) fails if one is missing.
 
 ## Conventions
 
