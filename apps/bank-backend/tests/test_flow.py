@@ -449,6 +449,91 @@ class TestUiLanguage(Base):
                                         self.store, NoLang())
 
 
+class TestFollowUps(Base):
+    """First four by CuriousGeorg1 (feat/t009), adapted; the rest cover the integration."""
+
+    def test_savings_opportunities_offers_choices(self):
+        a = self.ask("How could I save more?")
+        self.assertEqual(validate(ANSWER, a), [])
+        for f in a["follow_ups"]:
+            self.assertIn(f["kind"], ("clarify", "explore"))
+            self.assertTrue(f["label"] and f["prompt"])
+
+    def test_tapping_a_follow_up_is_itself_a_valid_answer(self):
+        a = self.ask("How could I save more?")
+        if not a["follow_ups"]:
+            self.skipTest("no savings ideas for this fixture customer")
+        b = self.ask(a["follow_ups"][0]["prompt"])
+        self.assertEqual(validate(ANSWER, b), [])
+        self.assertEqual(b["trace"][0]["tool"], "simulate_change")
+
+    def test_follow_ups_capped_and_deduped(self):
+        a = self.ask("What kind of spender am I?")
+        self.assertLessEqual(len(a["follow_ups"]), 3)
+        self.assertEqual(len(a["follow_ups"]), len({f["prompt"] for f in a["follow_ups"]}))
+
+    def test_smalltalk_has_no_follow_ups(self):
+        a = self.ask("hello")
+        self.assertEqual(a["follow_ups"], [])
+
+    def test_clean_drops_unanswerable_dishonest_and_repeated(self):
+        import followups
+        items = [
+            {"kind": "explore", "label": "Yesterday?", "prompt": "What did I spend yesterday?"},
+            {"kind": "explore", "label": "Prisma?", "prompt": "How much at Prisma?"},
+            {"kind": "explore", "label": "MRC-GRO-0032", "prompt": "Tell me about MRC-GRO-0032"},
+            {"kind": "explore", "label": "Save 4 444 €?", "prompt": "How to save 4 444 €?"},
+            {"kind": "explore", "label": "Same", "prompt": "Where did my money go?"},
+            {"kind": "bogus", "label": "Save more?", "prompt": "How could I save more?"},
+            {"kind": "explore", "label": "Save more?", "prompt": "How could I save more?"},
+            {"label": "", "prompt": "x"},
+        ]
+        out = followups.clean(items, "Where did my money go?", "en", "2026-09-30", [1879.0])
+        self.assertEqual(out, [{"kind": "explore", "label": "Save more?",
+                                "prompt": "How could I save more?"}])
+
+    def test_fallback_in_the_answer_language_when_provider_suggests_none(self):
+        class NoFollowUps:  # like OpenRouter today: answers, but suggests nothing
+            name = "nofu"
+            def plan(self, text, tools, history=None, context=None):
+                return {"requests": [{"tool": "spending_breakdown", "args": {}}], "lang": "fi"}
+            def compose(self, text, results, history=None, context=None):
+                return {"text": "Selvä.", "insights": [], "lang": "fi"}
+        a = orchestrator.handle_command({"customer_id": CID, "text": "Mihin rahat menivät?",
+                                         "lang": "fi"}, self.store, NoFollowUps())
+        self.assertEqual(validate(ANSWER, a), [])
+        self.assertTrue(a["follow_ups"])
+        prompts = " ".join(f["prompt"] for f in a["follow_ups"])
+        self.assertIn("Miten voisin säästää enemmän?", prompts)
+        self.assertNotIn("What if", prompts)
+        for f in a["follow_ups"]:  # every fallback suggestion is answerable
+            import scope
+            self.assertEqual(scope.limitation(f["prompt"], "fi", self.store.as_of(CID)), "")
+
+    def test_provider_suggestions_first_then_filled_up(self):
+        class OneVague:
+            name = "onevague"
+            def plan(self, text, tools, history=None, context=None):
+                return {"requests": [{"tool": "savings_opportunities", "args": {}}], "lang": "fi"}
+            def compose(self, text, results, history=None, context=None):
+                return {"text": "Selvä.", "insights": [], "lang": "fi",
+                        "follow_ups": [{"kind": "explore", "label": "Lisää?",
+                                        "prompt": "Kerro lisää säästämisestä."}]}
+        a = orchestrator.handle_command({"customer_id": CID, "text": "Miten säästän?",
+                                         "lang": "fi"}, self.store, OneVague())
+        self.assertEqual(a["follow_ups"][0]["prompt"], "Kerro lisää säästämisestä.")
+        self.assertLessEqual(len(a["follow_ups"]), 3)
+
+    def test_fallback_never_suggests_cutting_rent(self):
+        import followups
+        res = [{"tool": "spending_breakdown", "ok": True,
+                "data": tools.run("spending_breakdown", self.store, CID, {"period": "all"})}]
+        for lang in ("en", "fi", "sv"):
+            for f in followups.fallback(res, lang):
+                self.assertNotIn("Housing", f["prompt"])
+                self.assertNotIn("Asuminen", f["prompt"])
+
+
 class TestFlow(Base):
     def test_brief_questions(self):
         for q, tool in (("Where did my money go?", "spending_breakdown"),

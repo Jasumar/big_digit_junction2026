@@ -176,6 +176,16 @@ this year → this month) and invented numbers when no tool ran. Now:
   text, the model can no longer filter by them, and payments without a shop are labelled
   "bills and transfers" instead of "(no merchant)".
 
+### Follow-up questions
+
+Answers carry 0–3 tappable follow-up questions (`ANSWER.follow_ups`; design by
+CuriousGeorg1, T013). Gemma suggests them in the answer's language ("clarify" = concrete
+choices that change the numbers, "explore" = a natural next question); the stub has
+rule-based ones per tool. The backend (`apps/bank-backend/followups.py`) checks each one
+— answerable per the scope check, no merchant ids, no invented numbers — and fills up to
+3 with rule-based suggestions in the answer's language, so OpenRouter answers get them
+too.
+
 ### Team access
 
 - **Use the model:** teammates need only `AI_BASE_URL` and `AI_API_KEY` in their `.env`

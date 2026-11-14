@@ -108,8 +108,15 @@ question is fully supported: answer it directly, without saying what you cannot 
 - Name the period the numbers cover (from the results' "from"/"to").
 - Keep "text" to 2-4 sentences. Charts are shown separately; do not describe them.
 - At most 3 insights, each with a short title and one sentence.
+- Suggest 0-3 follow-up questions the customer could tap instead of typing, in \
+"follow_ups": [{{"kind": "clarify|explore", "label": "...", "prompt": "..."}}]. "label" \
+is button text, at most 6 words; "prompt" is the exact next message they would send. \
+Both in the answer's language. Use "clarify" when a choice changes the numbers (e.g. \
+which category to save on — offer the specific choices as separate buttons); "explore" \
+for a natural next question. Only suggest what the tools can answer (never anything \
+from the CANNOT list); leave the list empty rather than inventing one.
 - Reply with JSON only: {{"text": "...", "insights": [{{"title": "...", "body": "...", \
-"kind": "info|good|warn|tip"}}]}}."""
+"kind": "info|good|warn|tip"}}], "follow_ups": [...]}}."""
 
 
 def _plan_schema(tool_names):
@@ -141,6 +148,11 @@ COMPOSE_SCHEMA = {
                            "kind": {"type": "string",
                                     "enum": ["info", "good", "warn", "tip"]}},
             "required": ["title", "body", "kind"]}},
+        "follow_ups": {"type": "array", "maxItems": 3, "items": {
+            "type": "object",
+            "properties": {"kind": {"type": "string", "enum": ["clarify", "explore"]},
+                           "label": {"type": "string"}, "prompt": {"type": "string"}},
+            "required": ["label", "prompt"]}},
     },
     "required": ["lang", "text", "insights"],
 }
@@ -329,7 +341,11 @@ class Provider:
                                     "body": fmt(str(i.get("body", ""))),
                                     "kind": i.get("kind") if i.get("kind") in
                                     ("info", "good", "warn", "tip") else "info"}
-                                   for i in out.get("insights", [])[:3] if isinstance(i, dict)]}
+                                   for i in out.get("insights", [])[:3] if isinstance(i, dict)],
+                      "follow_ups": [{"kind": f.get("kind"), "label": fmt(str(f.get("label", ""))),
+                                      "prompt": fmt(str(f.get("prompt", "")))}
+                                     for f in out.get("follow_ups", [])[:3]
+                                     if isinstance(f, dict)]}
             if not answer["text"].strip():
                 raise LLMError("empty answer text")
             answer["lang"] = lang if lang in ("en", "fi", "sv") else "en"

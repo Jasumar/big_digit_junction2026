@@ -57,6 +57,7 @@ Index of `docs/tasks/`. Keep it short; one owner per task.
 | [T010](tasks/T010-improve-ai-rules.md) | `TODO` | ai | T008 | merged |
 | [T011](tasks/T011-inferred-life-signals.md) | `TODO` | calculation | T003 | review |
 | [T012](tasks/T012-ui-language.md) | `TODO` | frontend | T010 | merged |
+| [T013](tasks/T013-follow-up-questions.md) | `TODO` | ai, frontend | T010 | review |
 
 Order: T001 first (everyone, short). Then T002. Then T003, T004, T005, T006 in
 parallel — one person each. T007 joins them into M1. All seven were built together in

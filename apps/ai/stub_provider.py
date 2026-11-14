@@ -33,6 +33,16 @@ def eur(x):
     return "€{:,.0f}".format(x)
 
 
+def _dedupe_follow_ups(items):
+    """Keep order, drop exact-duplicate prompts (several tools can suggest the same one)."""
+    seen, out = set(), []
+    for f in items:
+        if f["prompt"] not in seen:
+            seen.add(f["prompt"])
+            out.append(f)
+    return out
+
+
 def _period(text):
     t = text.lower()
     if "last month" in t or "previous month" in t:
@@ -140,8 +150,10 @@ class Provider:
         return {"requests": [], "reply": HELP}
 
     # ------------------------------------------------------------ step 6
+    FOLLOW_UP_CAP = 3
+
     def compose(self, text, results, history=None, context=None):
-        parts, insights = [], []
+        parts, insights, follow_ups = [], [], []
         for r in results:
             if not r["ok"]:
                 parts.append("I couldn't run '%s': %s." % (r["tool"], r.get("error", "failed")))
@@ -151,9 +163,13 @@ class Provider:
                 t, ins = fn(r["data"])
                 parts.append(t)
                 insights += ins
+            fu = getattr(self, "_followups_" + r["tool"], None)
+            if fu:
+                follow_ups += fu(r["data"])
         if not parts:
             parts.append(HELP)
-        return {"text": " ".join(parts), "insights": insights, "lang": "en"}
+        return {"text": " ".join(parts), "insights": insights, "lang": "en",
+                "follow_ups": _dedupe_follow_ups(follow_ups)[:self.FOLLOW_UP_CAP]}
 
     def _spending_breakdown(self, d):
         top = d["categories"][0] if d["categories"] else None
@@ -311,3 +327,49 @@ class Provider:
             ins.append({"title": "Highest: %s" % top["label"], "kind": "info",
                         "body": "%s over %d transactions." % (eur(top["value"]), top["count"])})
         return text, ins
+
+    # -------------------------------------------------------- follow-ups
+    # By CuriousGeorg1 (feat/t009). English, like the rest of the stub; each prompt is
+    # something the stub itself understands. The backend checks them (followups.clean).
+
+    def _followups_spending_breakdown(self, d):
+        out = []
+        top = next((c for c in d["categories"] if c["amount"] > 0
+                    and c["category"] not in ("Housing", "Utilities")), None)
+        if top:
+            out.append({"kind": "explore", "label": "Cut %s by 20%%?" % top["category"],
+                        "prompt": "What if I cut %s by 20%%?" % top["category"]})
+        out.append({"kind": "explore", "label": "How could I save more?",
+                    "prompt": "How could I save more?"})
+        return out
+
+    def _followups_spender_profile(self, d):
+        return [{"kind": "explore", "label": "How could I save more?",
+                 "prompt": "How could I save more?"},
+                {"kind": "explore", "label": "How do I compare to others?",
+                 "prompt": "How do I compare to others?"}]
+
+    def _followups_safe_to_spend(self, d):
+        if d["status"] in ("tight", "very_tight"):
+            return [{"kind": "explore", "label": "How could I save more?",
+                     "prompt": "How could I save more?"}]
+        return []
+
+    def _followups_savings_opportunities(self, d):
+        # where would they like to save? the top ideas as one-tap choices
+        return [{"kind": "clarify", "label": "Cut back on %s" % i["category"],
+                 "prompt": "What if I cut %s by 20%%?" % i["category"]}
+                for i in d["ideas"][:2]]
+
+    def _followups_peer_comparison(self, d):
+        above = [c for c in d["categories"] if (c.get("diff_vs_median") or 0) > 0
+                 and c["category"] not in ("Housing", "Utilities")]
+        if not above:
+            return []
+        top = max(above, key=lambda c: c["diff_vs_median"])
+        return [{"kind": "explore", "label": "Cut %s by 20%%?" % top["category"],
+                 "prompt": "What if I cut %s by 20%%?" % top["category"]}]
+
+    def _followups_simulate_change(self, d):
+        return [{"kind": "explore", "label": "How could I save more?",
+                 "prompt": "How could I save more?"}]

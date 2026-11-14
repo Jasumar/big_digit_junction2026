@@ -2,6 +2,7 @@
 import sys
 
 import approval
+import followups
 import present
 import scope
 from ai.grounding import known_numbers, strip_unbacked
@@ -88,6 +89,11 @@ def handle_command(command, store, provider):
               "data_as_of": as_of, "provider": getattr(provider, "name", "unknown")}
     if limitation:
         answer["notice"] = limitation
+    # follow-up questions: the provider's first, then rule-based ones from the results to
+    # fill up to 3 (Gemma often suggests one vague question); all go through the checks
+    rule_based = followups.fallback(results, lang) if any(r.get("ok") for r in results) else []
+    answer["follow_ups"] = followups.clean(list(composed.get("follow_ups") or []) + rule_based,
+                                           command["text"], lang, as_of, known)
     return answer
 
 

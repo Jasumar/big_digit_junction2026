@@ -115,6 +115,17 @@ function renderAnswer(a) {
     if (i.body) d.append(document.createTextNode(i.body));
     box.append(d);
   }
+  if (a.follow_ups && a.follow_ups.length) {  // tappable next questions (idea: CuriousGeorg1)
+    const row = el("div", "followups");
+    for (const f of a.follow_ups) {
+      const b = el("button", "chip" + (f.kind === "clarify" ? " clarify" : ""), f.label);
+      b.type = "button";
+      b.title = f.prompt;
+      b.onclick = () => { for (const x of row.querySelectorAll("button")) x.disabled = true; ask(f.prompt); };
+      row.append(b);
+    }
+    box.append(row);
+  }
   const blocked = a.trace.filter((t) => !t.approved);
   if (blocked.length) box.append(el("div", "trace", t("notAllowed") + blocked.map((x) => x.note).join("; ")));
   return box;
