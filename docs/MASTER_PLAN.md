@@ -93,7 +93,7 @@ the MVP on branch `task/t000-first-mvp` (merged in PR #3).
 | 1 | ~~Exact challenge brief and judging criteria?~~ Answered: `CHALLENGE.md` | — | done |
 | 2 | ~~Stack and transport per app?~~ Answered by the MVP: Python stdlib backend, plain JS UI, HTTP between them, in-process AI and calculation (`tasks/Decisions.md` #1–4) | — | done |
 | 3 | ~~Is `apps/client/` a real layer?~~ Answered: a thin JS module, not a process (#3) | — | done |
-| 4 | ~~Which AI provider and model for the challenge?~~ Answered: Gemma 3 27B on Modal (vLLM, H100), OpenAI-compatible API with a key (T008) | — | done |
+| 4 | ~~Which AI provider and model for the challenge?~~ Answered: Gemma 4 26B-A4B on Modal (vLLM, H100), OpenAI-compatible API with a key (T008; Gemma 3 27B until T016) | — | done |
 | 5 | ~~What is "cloud" for the demo?~~ Answered: the data platform holding all client data (e.g. BigQuery, Azure, AWS); here, the S-pankki mock data. Local SQLite stands in. | — | done |
 | 6 | ~~Who asks for a calculation, and what does "approved" check?~~ Answered: the model asks; the backend checks the catalog, the schema and that no customer id is supplied (#13) | — | done |
 | 7 | ~~Which calculations does the demo need?~~ Answered for the MVP: seven tools (`apps/bank-backend/calculation/README.md`) | — | done |
@@ -116,6 +116,7 @@ Append-only. One line per decision others must not silently reverse.
 | 2026-11-14 | Challenge uses a hosted AI API; S-Bank may self-host in production, so the provider stays behind `apps/ai/provider.py` | speed for the challenge, swappable later | team |
 | 2026-11-14 | One model answers in the user's language (Finnish/Swedish/English); no translation model; fixed UI text via string files, numbers formatted by code | simpler, faster, keeps tone; numbers stay exact | team |
 | 2026-11-14 | AI for the challenge: Gemma 3 27B on Modal (vLLM, one H100), API-key protected; falls back to the stub if unreachable | open model we host ourselves, close to S-Bank self-hosting; team chose 27B | team |
+| 2026-11-14 | Switch the model to Gemma 4 26B-A4B (same Modal app and URL); Gemma 3 27B stays selectable with `COACH_MODEL` | after three code fixes Gemma 4 passed 33/33 eval cases at 3.6 s median vs Gemma 3's 31/33 at 11.0 s | team (T016) |
 | 2026-11-13 | The AI model never reads client data; it only sees results of backend-approved calculations | privacy, the core of the pitch | team |
 
 ## Risks

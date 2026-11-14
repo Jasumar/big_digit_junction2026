@@ -62,7 +62,7 @@ Read as intended, not as drawn (the diagram leaves these implicit — confirm in
 | `apps/client/` | Client device / Backend | `TODO` |
 | `apps/bank-backend/` | S-pankki backend | `TODO` |
 | `apps/bank-backend/calculation/` | Calculation tools | as `apps/bank-backend/` |
-| `apps/ai/` | Local AI model — Gemma 3 27B on Modal for the challenge; may be self-hosted at S-Bank | `TODO` |
+| `apps/ai/` | Local AI model — Gemma 4 26B-A4B on Modal for the challenge; may be self-hosted at S-Bank | `TODO` |
 | `packages/cloud/` | Cloud: the platform holding all client data (e.g. BigQuery); here the S-pankki mock data | `TODO` |
 | `packages/contracts/` | shapes on every edge | `TODO` |
 
@@ -107,7 +107,7 @@ local SQLite standing in for the cloud data platform, HTTP between UI and backen
 in-process calls for AI and calculation; AI providers: Gemma on Modal, OpenRouter, or the
 offline stub.
 
-AI: Gemma 3 27B on Modal (vLLM, OpenAI-compatible API) for the challenge, behind
+AI: Gemma 4 26B-A4B on Modal (vLLM, OpenAI-compatible API) for the challenge, behind
 `apps/ai/provider.py` so S-Bank could swap in its own self-hosted model; one model
 answers in the user's language. Still open: real authentication. Hosting the cloud is
 deferred (team keeps the local stand-in); notes for later in

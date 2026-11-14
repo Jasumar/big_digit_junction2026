@@ -116,3 +116,61 @@ def drop_foreign_terms(answer):
     return dict(answer, text=fix(answer.get("text")),
                 insights=[dict(i, title=fix(i.get("title")), body=fix(i.get("body")))
                           for i in answer.get("insights", [])])
+
+
+_LANG_WORDS = {
+    "fi": {"paljonko", "mihin", "miten", "millainen", "mitä", "olen", "minun", "rahani",
+           "kuussa", "viime", "tässä", "voin", "kulutin", "käytin", "jos", "eilen", "onko",
+           "kuinka", "näytä", "minä", "vuonna", "kannattaa", "sijoittanut", "säästää"},
+    "sv": {"hur", "mycket", "vart", "mina", "pengar", "jag", "kan", "den", "här", "månaden",
+           "veckan", "vilken", "är", "spendera", "spara", "igår", "förra", "visa"},
+    "en": {"how", "much", "what", "where", "did", "spend", "spent", "my", "money", "can",
+           "this", "last", "month", "week", "the", "yesterday", "show", "could", "save"},
+}
+
+
+def guess_lang(text):
+    """Language of a question by common words; None if unsure. The model's own guess was
+    wrong at times (Gemma 4 marked an English question as Finnish)."""
+    words = re.findall(r"[a-zåäö]+", (text or "").lower())
+    scores = {k: sum(w in v for w in words) for k, v in _LANG_WORDS.items()}
+    best = max(scores, key=scores.get)
+    ranked = sorted(scores.values(), reverse=True)
+    return best if ranked[0] >= 1 and ranked[0] > ranked[1] else None
+
+
+def _term_map(lang):
+    """Glossary terms of the other languages -> the answer language's term."""
+    from cloud import glossary
+    idx = {"en": 0, "fi": 1, "sv": 2}
+    out = {}
+    for key, names in glossary.BUCKETS.items():
+        for lg in ("en", "fi", "sv"):
+            if lg != lang and names[lg] != names[lang]:
+                out[names[lg]] = names[lang]
+    for cat, names in glossary.CATEGORIES.items():
+        target = cat.lower() if lang == "en" else names[lang].split(" (")[0]
+        for lg in ("fi", "sv"):
+            if lg != lang:
+                src = names[lg].split(" (")[0]
+                if src.lower() != target.lower():
+                    out[src] = target
+    return out
+
+
+def localize_terms(answer):
+    """Replace basket/category names written in another language (Gemma 4 left Finnish
+    "pakolliset säännölliset menot" in English and Swedish answers)."""
+    lang = answer.get("lang", "en")
+    terms = sorted(_term_map(lang).items(), key=lambda kv: -len(kv[0]))
+
+    def fix(s):
+        s = s or ""
+        for src, dst in terms:
+            def repl(m, dst=dst):
+                return dst[:1].upper() + dst[1:] if m.group(0)[:1].isupper() else dst
+            s = re.sub(r"(?<![\w])%s(?![\w])" % re.escape(src), repl, s, flags=re.I)
+        return s
+    return dict(answer, text=fix(answer.get("text")),
+                insights=[dict(i, title=fix(i.get("title")), body=fix(i.get("body")))
+                          for i in answer.get("insights", [])])

@@ -1,20 +1,24 @@
-"""Gemma 3 27B on Modal, served by vLLM as an OpenAI-compatible API.
+"""Gemma 4 26B-A4B on Modal, served by vLLM as an OpenAI-compatible API.
 
 This file is deployed to Modal; it is not imported by the backend. The backend talks to
 the deployed URL with plain HTTP (apps/ai/llm_provider.py).
 
 One-time setup (each person who deploys; see apps/ai/README.md §Modal):
     pip install modal==1.6.4 && python3 -m modal setup
-    modal secret create huggingface-secret HF_TOKEN=<token with Gemma access>
+    modal secret create huggingface-secret HF_TOKEN=<HF read token>  # Gemma 3 needs licence access; Gemma 4 is open
     modal secret create coach-llm-key VLLM_API_KEY=<long random string>
 
 Deploy / check:
     modal deploy apps/ai/modal_app.py          # prints the https://...modal.run URL
     AI_BASE_URL=<url> AI_API_KEY=<key> modal run apps/ai/modal_app.py   # smoke test
 
-Env read at deploy time: COACH_MODEL, COACH_GPU (defaults below), COACH_MIN_CONTAINERS
-(default 0; set 1 during the demo so the model stays warm — a warm GPU is billed every
-second it runs).
+Env read at deploy time: COACH_MODEL, COACH_GPU (defaults below), COACH_APP (Modal app
+name, default "sbank-coach-llm"; a different name deploys a second server with its own
+URL, e.g. to compare models side by side), COACH_MIN_CONTAINERS (default 0; set 1 during
+the demo so the model stays warm — a warm GPU is billed every second it runs).
+
+Previous model, still selectable:
+    COACH_MODEL=google/gemma-3-27b-it modal deploy apps/ai/modal_app.py
 """
 import json
 import os
@@ -27,11 +31,13 @@ import urllib.request
 
 import modal
 
-# Defaults: the team's choice. Override at deploy time, e.g. the cheaper fallback:
-#   COACH_MODEL=google/gemma-3-12b-it COACH_GPU=L40S modal deploy apps/ai/modal_app.py
-MODEL = os.environ.get("COACH_MODEL", "google/gemma-3-27b-it")
-SERVED_NAME = "gemma"  # what clients send as "model"
-GPU = os.environ.get("COACH_GPU", "H100")  # 27B in bf16 needs ~55 GB weights + KV cache
+# Defaults: the team's choice (T016). Gemma 4 26B-A4B is a mixture-of-experts model:
+# ~26B weights (~52 GB in bf16, fits one H100) but only ~4B active per token, so it
+# answers faster than the dense Gemma 3 27B. Apache-2.0 and not gated on Hugging Face.
+# Override at deploy time, e.g. Gemma 3:  COACH_MODEL=google/gemma-3-27b-it
+MODEL = os.environ.get("COACH_MODEL", "google/gemma-4-26B-A4B-it")
+SERVED_NAME = "gemma"  # what clients send as "model" (same for every Gemma version)
+GPU = os.environ.get("COACH_GPU", "H100")
 PORT = 8000
 MAX_MODEL_LEN = 16384  # our prompts are a few thousand tokens; keeps KV cache small
 MINUTES = 60
@@ -47,7 +53,7 @@ image = (
 hf_cache = modal.Volume.from_name("coach-hf-cache", create_if_missing=True)
 vllm_cache = modal.Volume.from_name("coach-vllm-cache", create_if_missing=True)
 
-app = modal.App("sbank-coach-llm")
+app = modal.App(os.environ.get("COACH_APP", "sbank-coach-llm"))
 
 
 @app.function(
