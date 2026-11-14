@@ -89,6 +89,32 @@ class TestApproval(unittest.TestCase):
 
 
 class TestTools(Base):
+    def test_profile_signals(self):
+        d = tools.run("spender_profile", self.store, "CUST00005", {})
+        keys = sorted(s["key"] for s in d["signals"])
+        self.assertEqual(keys, ["drives", "events", "invests", "regular_salary", "taxis"])
+        for s in d["signals"]:
+            self.assertTrue(s["label"] and s["evidence"]["period_days"] == 90)
+        self.assertIn("never state them as fact", d["notes"])
+        # too short a window says nothing rather than guessing from one purchase
+        self.assertEqual(tools.run("spender_profile", self.store, "CUST00005",
+                                   {"period": "last_7_days"})["signals"], [])
+
+    def test_profile_signals_reach_the_answer(self):
+        import present
+        d = tools.run("spender_profile", self.store, "CUST00005", {})
+        res = [{"tool": "spender_profile", "ok": True, "data": d}]
+        en = json.dumps(present.build(res, "en"))
+        fi = json.dumps(present.build(res, "fi"), ensure_ascii=False)
+        self.assertIn("What your spending suggests", en)
+        self.assertIn("at least", en)
+        self.assertIn("Mitä kulutuksesi kertoo", fi)
+        self.assertIn("Käyttää takseja", fi)
+        for english in ("Takes taxis", "What your spending suggests", "at least"):
+            self.assertNotIn(english, fi)
+        ans = self.ask("What kind of spender am I?", "CUST00005")
+        self.assertTrue(any(i["title"].startswith("Looks like:") for i in ans["insights"]))
+
     def test_buckets_add_up(self):
         d = tools.run("spending_breakdown", self.store, CID, {"period": "last_90_days"})
         self.assertAlmostEqual(sum(b["amount"] for b in d["buckets"]), d["total_spend"], 1)

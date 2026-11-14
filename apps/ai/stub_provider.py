@@ -186,6 +186,14 @@ class Provider:
         if d["savings_rate_pct"] is not None:
             text += " You kept about %.0f%% of your income." % d["savings_rate_pct"]
         ins = [{"title": t, "body": "", "kind": "info"} for t in d["traits"]]
+        for s in d.get("signals", []):  # guesses: hedged, with their evidence
+            ev = s["evidence"]
+            body = ("At least %d purchases, %s." % (ev["count"], eur(ev["amount_eur"]))
+                    if "count" in ev else "%d of the last %d months." % (
+                        ev.get("months_with_deposit", ev.get("months_with_salary", 0)),
+                        ev["months"]))
+            label = s["label"][:1].lower() + s["label"][1:]
+            ins.append({"title": "Looks like: %s" % label, "body": body, "kind": "info"})
         pm = d.get("peer_monthly_spend_median")
         if pm:
             diff = d["monthly_spend"] - pm
